@@ -1,9 +1,10 @@
+"""Test state transitions"""
+
 from typing import Literal
 import pytest
 
-from ait.base import InvalidState
 from ait.state_engine import StateEngine
-from tests.common import TestEvent, STATES, EVENTS, TRANSITION_TABLE
+from tests.common import TestEvent, TestApp
 
 
 @pytest.mark.parametrize(
@@ -21,37 +22,40 @@ from tests.common import TestEvent, STATES, EVENTS, TRANSITION_TABLE
 def test_transition(transition: Literal["Start"]):
     """test state transitions"""
     # GIVEN
+    test_app = TestApp()
     source_name = transition[0]
+    test_app.state = TestApp.state_list[source_name]
     expected_target_name = transition[2]
     event_name = transition[1]
-    source = STATES[source_name]
     event = TestEvent(event_name)
 
     # WHEN
-    target_state, response = event.fire(source, {})
+    target_state, response = event.fire(test_app, {})
 
     # THEN
-    assert response["return_code"] == 0
-    assert target_state == STATES[expected_target_name]
+    assert "success" in response
+    assert target_state == TestApp.state_list[expected_target_name]
 
 
 def test_invalide_transition():
     """test invalid transitions"""
     # GIVEN
-    for source in STATES.values():
-        for event in EVENTS:
+    test_app = TestApp()
+    for source in TestApp.state_list.values():
+        test_app.state = source
+        for event in TestApp.event_list.values():
             # WHEN
-            if not event.name in TRANSITION_TABLE[source.name]["transitions"]:
-                target_state, response = event.fire(source, {})
+            if not event.name in TestApp.transition_table[source.name]:
+                target_state, response = event.fire(test_app, {})
 
                 # THEN
-                assert response["return_code"] == -1
+                assert "error" in response
                 assert not target_state.is_valid
 
 
 def test_engine():
     """test state engine"""
     # GIVEN
-    init_state = STATES["Start"]
-    engine = StateEngine(init_state, EVENTS)
+    init_state = TestApp.state_list["Start"]
+    engine = StateEngine(init_state, list(TestApp.event_list.values()))
     engine.evolve(init_state)

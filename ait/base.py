@@ -104,6 +104,55 @@ class InvalidState(State):
         self._value = {}
 
 
+class SUT(ABC):
+    """
+    System/Service Under Test
+    =========================
+
+    The SUT is the system/service/application to be tested. It should provide
+    a set of APIs to be executed by the testing program as well as a set of
+    visible states.
+    """
+
+    def __init__(self, options: dict):
+        """
+        constructor
+
+        :param options: name/value pairs to setup the system
+        :type options: dict
+        """
+        self._options = options
+
+    @abstractmethod
+    def initialize(self) -> State:
+        """
+        Initialize the system.
+
+        :return: the initial state
+        :rtype: State
+        """
+
+    @abstractmethod
+    def reset(self):
+        """reset the system to the initial state"""
+
+    @property
+    @abstractmethod
+    def state(self) -> State:
+        """The current state of the system"""
+
+    @abstractmethod
+    def process_request(self, request: dict) -> dict:
+        """
+        Process an request
+
+        :param request: the request received
+        :type dict: dict
+        :return: result of the request processing
+        :rtype: dict
+        """
+
+
 class Event(ABC):
     """Event interface"""
 
@@ -115,6 +164,17 @@ class Event(ABC):
         """
         self._name = name
 
+    @abstractmethod
+    def _build_request(self, args: dict) -> dict:
+        """
+        build a request
+
+        :param args: the arguments for building a request
+        :type args: dict
+        :return: the request
+        :rtype: dict
+        """
+
     @property
     def name(self) -> str:
         """name of the event
@@ -125,17 +185,14 @@ class Event(ABC):
         return self._name
 
     @abstractmethod
-    def fire(self, source: State, args: dict) -> tuple[State, dict]:
+    def fire(self, sut: SUT, args: dict) -> tuple[State, dict]:
         """Fire the event on source state with arguments
 
-        :param source: source state the event acts on
-        :type source: State
-        :param args: arguments used to form a event or custmize the environment
+        :param sut: the target system that will receive and process the event
+        :type source: SUT
+        :param args: arguments to build a request to the sut
         :type args: dict
         :return: target state and the result of the event processing.
           if the API returns error, the state must be an invalid state
         :rtype: tuple[State, dict]
         """
-
-
-Transition = namedtuple("Transition", ["source", "target", "event"])

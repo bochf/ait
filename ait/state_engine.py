@@ -60,8 +60,7 @@ class StateEngine:
 
         return self._matrix
 
-    @property
-    def completed(self) -> bool:
+    def mature(self, state: str = "") -> bool:
         """check all the state/event are executed
 
         :return: True if all the transitions are executed

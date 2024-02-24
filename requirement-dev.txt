@@ -1,0 +1,7 @@
+igraph
+pycairo
+cairocffi
+pytest
+pylint
+black
+ipykernel
