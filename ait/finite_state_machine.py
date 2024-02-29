@@ -30,7 +30,7 @@ class Arrow:
         return [self.tail, self.head]
 
 
-class FiniteStateMachine(Graph):
+class FiniteStateMachine:
     """
     Class of finite state machine (FSM)
     ===================================
@@ -42,10 +42,10 @@ class FiniteStateMachine(Graph):
 
     def __init__(self):
         """constructor"""
-        super().__init__(directed=True)
+        self._graph = Graph(directed=True)
 
     def _edge_to_arrow(self, edge: ig.Edge) -> Arrow:
-        vs = self.vs
+        vs = self._graph.vs
         return Arrow(vs[edge.source], vs[edge.target], edge.attributes()["label"])
 
     @property
@@ -56,7 +56,7 @@ class FiniteStateMachine(Graph):
         :return: list of vertices name
         :rtype: list[str]
         """
-        return [vertex.attributes()["name"] for vertex in self.vs]
+        return [vertex.attributes()["name"] for vertex in self._graph.vs]
 
     @property
     def arcs(self) -> list[Arrow]:
@@ -66,7 +66,7 @@ class FiniteStateMachine(Graph):
         :return: list of arrows
         :rtype: list[Arrow]
         """
-        return [self._edge_to_arrow(edge) for edge in self.es]
+        return [self._edge_to_arrow(edge) for edge in self._graph.es]
 
     def find_node(self, name: str) -> bool:
         """
@@ -78,7 +78,7 @@ class FiniteStateMachine(Graph):
         :rtype: State
         """
         try:
-            self.vs.find(name)
+            self._graph.vs.find(name)
             return True
         except ValueError:
             return False
@@ -95,7 +95,7 @@ class FiniteStateMachine(Graph):
             logging.warning("Skip duplicated vertex %s", name)
             return
 
-        self.add_vertex(name)
+        self._graph.add_vertex(name)
         logging.info("Add new vertex %s", name)
 
     def get_arcs(
@@ -116,12 +116,12 @@ class FiniteStateMachine(Graph):
         :return: list of arrows
         :rtype: list[Arrow]
         """
-        eids = set(range(self.ecount()))  # all the edge ids
+        eids = set(range(self._graph.ecount()))  # all the edge ids
 
         if source:
             # filter by all the outgoing edges from the source
             try:
-                vtx = self.vs.find(name=source)
+                vtx = self._graph.vs.find(name=source)
                 eids.intersection_update(
                     {edge.index for edge in vtx.incident(mode="out")}
                 )
@@ -130,14 +130,14 @@ class FiniteStateMachine(Graph):
         if target:
             # filter by all the incoming edges to the target
             try:
-                vtx = self.vs.find(target)
+                vtx = self._graph.vs.find(target)
                 eids.intersection_update(
                     {edge.index for edge in vtx.incident(mode="in")}
                 )
             except ValueError:
                 return []
 
-        edges = [self.es[eid] for eid in eids]
+        edges = [self._graph.es[eid] for eid in eids]
         # filter by event name
         return [
             self._edge_to_arrow(edge)
@@ -166,10 +166,10 @@ class FiniteStateMachine(Graph):
         self.add_node(source)
         self.add_node(target)
 
-        self.add_edge(source, target, label=event)
+        self._graph.add_edge(source, target, label=event)
         logging.info("Add new edge %s--%s->%s", source, event, target)
 
-    def bfs_vertex_name(self, name: str) -> list[str]:
+    def bfs(self, name: str) -> list[str]:
         """
         Conducts a breadth first search (BFS) on the graph.
 
@@ -182,8 +182,8 @@ class FiniteStateMachine(Graph):
             logging.error("Invalid state %s", name)
             return []
 
-        vids = self.bfs(name)[0]  # vertex ids visited in BFS order
-        return [self.vs[vid].attributes()["name"] for vid in vids]
+        vids = self._graph.bfs(name)[0]  # vertex ids visited in BFS order
+        return [self._graph.vs[vid].attributes()["name"] for vid in vids]
 
     def shortest_path(self, source: str, target: str) -> list[Arrow]:
         """
@@ -196,15 +196,15 @@ class FiniteStateMachine(Graph):
         :return: list of arrows
         :rtype: list[Arrow]
         """
-        path = self.get_shortest_path(source, target, output="epath")
+        path = self._graph.get_shortest_path(source, target, output="epath")
         if not path:
             logging.warning("No path from %s to %s", source, target)
             return []
 
         result = []
-        vs = self.vs
+        vs = self._graph.vs
         for eid in path:
-            edge = self.es[eid]
+            edge = self._graph.es[eid]
             result.append(
                 Arrow(
                     vs[edge.source].attributes()["name"],
@@ -231,6 +231,33 @@ class FiniteStateMachine(Graph):
         for arc in path:
             result += "--" + arc.name + "->" + arc.head
         return result
+
+    def load_from_dict(self, data: dict[str, dict[str, dict]]):
+        """
+        Constructs a graph from a dict-of-dicts representation.
+
+        Each key can be an integer or a string and represent a vertex. Each value
+        is a dict representing edges (outgoing if the graph is directed) from that
+        vertex. Each dict key is an integer/string for a target vertex, such that
+        an edge will be created between those two vertices. Integers are
+        interpreted as vertex_ids from 0 (as used in igraph), strings are
+        interpreted as vertex names, in which case vertices are given separate
+        numeric ids. Each value is a dictionary of edge attributes for that edge.
+
+        :param data: map of vertex name and the edges
+
+        .. codeblock::
+
+            {
+                'Alice':
+                {
+                    'Bob': {'weight': 1.5},
+                    'David': {'weight': 2}
+                }
+            }
+
+        :type data: dict[str, dict[str, dict]]
+        """
 
     def export_graph(self, filename: str, layout: str) -> None:
         """

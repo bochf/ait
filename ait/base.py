@@ -12,8 +12,8 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
 
-class SUT:
-    pass
+class SUT:  # pylint: disable=too-few-public-methods
+    """forward delaration"""
 
 
 class State(ABC):

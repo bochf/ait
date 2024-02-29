@@ -294,7 +294,7 @@ class StateEngine:
                  empty if no immature state is reachable form the source
         :rtype: State
         """
-        for name in self._fsm.bfs_vertex_name(source):
+        for name in self._fsm.bfs(source):
             if not self._is_mature_state(name):
                 return name
 
