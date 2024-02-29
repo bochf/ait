@@ -9,7 +9,11 @@ This module defines the basic data structurs of the finite state machine
 """
 
 from abc import ABC, abstractmethod
-from collections import namedtuple
+from dataclasses import dataclass
+
+
+class SUT:
+    pass
 
 
 class State(ABC):
@@ -81,6 +85,9 @@ class State(ABC):
             return False
         return self.value == rhs.value
 
+    def __ne__(self, __value: object) -> bool:
+        return not self.__eq__(__value)
+
     @abstractmethod
     def fetch_state(self, **kwargs):
         """abstract method of fetching current state"""
@@ -98,63 +105,20 @@ class InvalidState(State):
         return "invalid state"
 
     def fetch_state(self, **kwargs):
-        self._name = ""
-        self._label = ""
+        self._name = "invalid"
+        self._label = "invalid"
         self._valid = False
         self._value = {}
 
 
-class SUT(ABC):
-    """
-    System/Service Under Test
-    =========================
-
-    The SUT is the system/service/application to be tested. It should provide
-    a set of APIs to be executed by the testing program as well as a set of
-    visible states.
-    """
-
-    def __init__(self, options: dict):
-        """
-        constructor
-
-        :param options: name/value pairs to setup the system
-        :type options: dict
-        """
-        self._options = options
-
-    @abstractmethod
-    def initialize(self) -> State:
-        """
-        Initialize the system.
-
-        :return: the initial state
-        :rtype: State
-        """
-
-    @abstractmethod
-    def reset(self):
-        """reset the system to the initial state"""
-
-    @property
-    @abstractmethod
-    def state(self) -> State:
-        """The current state of the system"""
-
-    @abstractmethod
-    def process_request(self, request: dict) -> dict:
-        """
-        Process an request
-
-        :param request: the request received
-        :type dict: dict
-        :return: result of the request processing
-        :rtype: dict
-        """
-
-
 class Event(ABC):
-    """Event interface"""
+    """
+    Interface of Event
+    ==================
+
+    The events are the outside data sent to the SUT. Each event has a unique
+    name. The events can be fired to the SUT and get a result back.
+    """
 
     def __init__(self, name: str):
         """constructor
@@ -185,14 +149,30 @@ class Event(ABC):
         return self._name
 
     @abstractmethod
-    def fire(self, sut: SUT, args: dict) -> tuple[State, dict]:
+    def fire(self, sut: SUT, args: dict) -> dict:
         """Fire the event on source state with arguments
 
         :param sut: the target system that will receive and process the event
         :type source: SUT
-        :param args: arguments to build a request to the sut
+        :param args: arguments to build a request to the sut, the args might be
+                     updated according to the response of the event processing
         :type args: dict
         :return: target state and the result of the event processing.
           if the API returns error, the state must be an invalid state
         :rtype: tuple[State, dict]
         """
+
+
+@dataclass
+class Transition:
+    """
+    A transition is a tuple of the source state, target state, and the event
+     that triggers the transition. It represents a directed edge in a graph.
+    """
+
+    source: State
+    target: State
+    event: Event
+
+    def __str__(self) -> str:
+        return f"{self.source.name}--{self.event.name}->{self.target.name}"
