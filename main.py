@@ -5,10 +5,6 @@ Generate test cases from a given state machine
 import argparse
 import textwrap
 import logging
-import igraph as ig
-
-#import matplotlib.pyplot as plt
-from igraph import Graph, plot
 
 
 def _init_log(filename, level=logging.DEBUG):
@@ -39,12 +35,6 @@ def _parse_args():
 
     return parser.parse_args()
 
-def test_igraph():
-    g = Graph(edges=[[0, 1], [1,2]], directed=True)
-    ig.config['plotting.backend'] = 'matplotlib'
-    print(g)
-    plot(g, target="g.pdf")
-
 
 if __name__ == "__main__":
     print("generate test case")
@@ -54,5 +44,3 @@ if __name__ == "__main__":
     _init_log(options.log, log_level)
 
     logging.debug("Program starts. options=%s", options)
-
-    test_igraph()
