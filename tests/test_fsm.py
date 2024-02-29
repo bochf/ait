@@ -3,7 +3,6 @@ This moudle test FiniteStateMachine
 """
 
 import logging
-from igraph import Graph
 from ait.finite_state_machine import FiniteStateMachine, Arrow
 
 
@@ -69,7 +68,7 @@ def test_add_arcs():
 def test_load_from_dict():
     """test load graph from dictionary"""
     # GIVEN
-    data = {
+    input_dict = {
         "A": {"B": {"label": 1}, "C": {"label": 2}},
         "B": {"D": {"label": 3}},
         "C": {"D": {"label": 4}},
@@ -79,5 +78,11 @@ def test_load_from_dict():
     }
 
     # WHEN
-    fsm = Graph.DictDict(data, directed=True)
-    logging.info(fsm)
+    fsm = FiniteStateMachine()
+    fsm.load_from_dict(input_dict)
+
+    output = fsm.export_to_dict()
+
+    # THEN
+    assert input_dict == output
+    logging.info("%s", output)

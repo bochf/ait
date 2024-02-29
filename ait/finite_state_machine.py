@@ -236,15 +236,14 @@ class FiniteStateMachine:
         """
         Constructs a graph from a dict-of-dicts representation.
 
-        Each key can be an integer or a string and represent a vertex. Each value
-        is a dict representing edges (outgoing if the graph is directed) from that
-        vertex. Each dict key is an integer/string for a target vertex, such that
-        an edge will be created between those two vertices. Integers are
-        interpreted as vertex_ids from 0 (as used in igraph), strings are
-        interpreted as vertex names, in which case vertices are given separate
-        numeric ids. Each value is a dictionary of edge attributes for that edge.
+        Each key is a string and represent a vertex. Each value is a dict
+        representing outgoing edges from that vertex. Each dict key is a
+        string for a target vertex, such that an edge will be created between
+        those two vertices. Strings are interpreted as vertex names. Each
+        value is a dictionary of edge attributes for that edge.
 
         :param data: map of vertex name and the edges
+        :type data: dict[str, dict[str, dict]]
 
         .. codeblock::
 
@@ -256,8 +255,18 @@ class FiniteStateMachine:
                 }
             }
 
-        :type data: dict[str, dict[str, dict]]
         """
+        self._graph = Graph.DictDict(data, directed=True)
+
+    def export_to_dict(self) -> dict[str, dict[str, dict]]:
+        """
+        Export the graph to a dict-of-dict data structure
+
+        :return: _description_
+        :rtype: dict[str, dict[str, dict]]
+        """
+        data = self._graph.to_dict_dict(use_vids=False, edge_attrs="label")
+        return data
 
     def export_graph(self, filename: str, layout: str) -> None:
         """
