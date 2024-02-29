@@ -8,6 +8,7 @@ Submodules
    :maxdepth: 10
 
    ait.base
+   ait.errors
    ait.finite_state_machine
    ait.state_engine
    ait.traveller
