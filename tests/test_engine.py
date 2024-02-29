@@ -30,11 +30,11 @@ def test_transition(transition: Literal["Start"]):
     event = TestEvent(event_name)
 
     # WHEN
-    target_state, response = event.fire(test_app, {})
+    response = event.fire(test_app, {})
 
     # THEN
     assert "success" in response
-    assert target_state == TestApp.state_list[expected_target_name]
+    assert test_app.state == TestApp.state_list[expected_target_name]
 
 
 def test_invalide_transition():
@@ -43,19 +43,20 @@ def test_invalide_transition():
     test_app = TestApp()
     for source in TestApp.state_list.values():
         test_app.state = source
-        for event in TestApp.event_list.values():
+        for event in test_app.event_list.values():
             # WHEN
             if not event.name in TestApp.transition_table[source.name]:
-                target_state, response = event.fire(test_app, {})
+                response = event.fire(test_app, {})
 
                 # THEN
                 assert "error" in response
-                assert not target_state.is_valid
+                assert test_app.state == source
 
 
 def test_engine():
     """test state engine"""
     # GIVEN
-    init_state = TestApp.state_list["Start"]
-    engine = StateEngine(init_state, list(TestApp.event_list.values()))
+    test_app = TestApp()
+    init_state = test_app.start()
+    engine = StateEngine(test_app)
     engine.evolve(init_state)

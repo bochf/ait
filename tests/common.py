@@ -9,7 +9,8 @@ This module defines the target system for testing
 
 import logging
 
-from ait.base import Event, State, InvalidState, SUT
+from ait.base import Event, State
+from ait.sut import SUT
 
 
 class TestState(State):
@@ -40,7 +41,7 @@ class TestEvent(Event):
         """
         return {"name": self.name}
 
-    def fire(self, sut: SUT, args: dict) -> tuple[State, dict]:
+    def fire(self, sut: SUT, args: dict) -> dict:
         """Fire the event on source state with arguments
 
         :param sut: the target system that will receive and process the event
@@ -53,10 +54,7 @@ class TestEvent(Event):
         """
         request = self._build_request(args)
         result = sut.process_request(request)
-        if "error" in result:
-            return InvalidState(), result
-
-        return sut.state, result
+        return result
 
 
 class TestApp(SUT):
@@ -107,12 +105,8 @@ class TestApp(SUT):
     """
 
     state_list = {
-        name: TestState(name, {}) for name in ["Start", "Running", "Paused", "Stopped"]
-    }
-
-    event_list = {
-        name: TestEvent(name)
-        for name in ["Initialize", "Reset", "Pause", "Stop", "Resume"]
+        name: TestState(name, {"state": name})
+        for name in ["Start", "Running", "Paused", "Stopped"]
     }
 
     transition_table = {
@@ -127,9 +121,13 @@ class TestApp(SUT):
         Initialize the SUT
         """
         super().__init__({})
+        self._event_list = {
+            name: TestEvent(name)
+            for name in ["Initialize", "Reset", "Pause", "Stop", "Resume"]
+        }
         self._current_state = TestApp.state_list["Start"]
 
-    def initialize(self) -> State:
+    def start(self) -> State:
         """
         Initialize the system.
 
@@ -153,6 +151,11 @@ class TestApp(SUT):
         """force set the system state to a new value, for test purpose"""
         self._current_state = value
 
+    @property
+    def event_list(self) -> dict[str, Event]:
+        """The event list of the system"""
+        return self._event_list
+
     def process_request(self, request: dict) -> dict:
         """
         Process an request
@@ -167,7 +170,7 @@ class TestApp(SUT):
             self._current_state = TestApp.state_list[target]
             return {"success": 0}
         except KeyError:
-            logging.error(
+            logging.info(
                 "Invalid request: %s, current state: %s", request, self._current_state
             )
             return {"error": -1}
