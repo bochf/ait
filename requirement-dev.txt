@@ -4,6 +4,6 @@ cairocffi
 pytest
 pylint
 black
-ipykernel
-shpinx
+sphinx
 sphinx-rtd-theme
+ipykernel
