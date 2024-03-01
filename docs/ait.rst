@@ -11,6 +11,7 @@ Submodules
    ait.errors
    ait.finite_state_machine
    ait.state_engine
+   ait.sut
    ait.traveller
 
 Module contents
