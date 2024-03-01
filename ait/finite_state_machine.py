@@ -255,7 +255,7 @@ class FiniteStateMachine:
         :param data: map of vertex name and the edges
         :type data: dict[str, dict[str, dict]]
 
-        .. codeblock::
+        .. code-block::
 
             {
                 'Alice':
