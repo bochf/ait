@@ -1,6 +1,6 @@
 """Test state transitions"""
 
-from typing import Literal
+import logging
 import pytest
 
 from ait.state_engine import StateEngine
@@ -19,7 +19,7 @@ from tests.common import TestEvent, TestApp
         ("Stopped", "Reset", "Start"),
     ],
 )
-def test_transition(transition: Literal["Start"]):
+def test_transition(transition):
     """test state transitions"""
     # GIVEN
     test_app = TestApp()
@@ -60,3 +60,6 @@ def test_engine():
     init_state = test_app.start()
     engine = StateEngine(test_app)
     engine.evolve(init_state)
+    fsm = engine.state_machine
+    logging.info("matrix=%s", engine.matrix)
+    fsm.export_graph("fsm.svg")

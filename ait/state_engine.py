@@ -65,6 +65,10 @@ class StateEngine:
 
         return self._matrix
 
+    @property
+    def state_machine(self) -> FiniteStateMachine:
+        return self._fsm
+
     def _is_mature_state(self, name: str) -> bool:
         try:
             trans = self.matrix[name]["transitions"]
@@ -76,7 +80,7 @@ class StateEngine:
     def _get_immature_states(self) -> list[str]:
         return [name for name in self._matrix if not self._is_mature_state(name)]
 
-    def mature(self, name: str = "") -> bool:
+    def _mature(self, name: str = "") -> bool:
         """
         Check a state or the entire matrix is matured.
         A matured state is a state without any undetermined transition.
@@ -106,7 +110,7 @@ class StateEngine:
         if not state.is_valid:
             return
 
-        if not self.get_state(state.name):
+        if not self._get_state(state.name):
             transitions = {name: None for name in self._sut.event_list}
             self._matrix[state.name] = {
                 "source": state,
@@ -116,7 +120,7 @@ class StateEngine:
 
             self._fsm.add_node(state.name)
 
-    def get_state(self, state_name: str) -> State:
+    def _get_state(self, state_name: str) -> State:
         """Get a state by name
 
         :param state_name: name of the state
@@ -129,7 +133,7 @@ class StateEngine:
         except KeyError:
             return None
 
-    def set_transition(self, transition: Transition):
+    def _set_transition(self, transition: Transition):
         """
         Set the transition from source state to target state on the event
 
@@ -169,7 +173,7 @@ class StateEngine:
         except KeyError as exc:
             raise UnknownEvent(f"Invalid event {event_name}") from exc
 
-    def explore(self, current_state: State) -> State:
+    def _explore(self, current_state: State) -> State:
         """
         Explore possible transitions on a state by applying all the events on it.
         If any event triggers the target system state change, the function will
@@ -204,14 +208,16 @@ class StateEngine:
                 response = event.fire(self._sut, self._env)
                 if "error" in response:
                     # an error is returned while processing the event on current state
-                    self.set_transition(Transition(current_state, INVALID_STATE, event))
+                    self._set_transition(
+                        Transition(current_state, INVALID_STATE, event)
+                    )
                 else:
                     target_state = self._sut.state
-                    self.set_transition(Transition(current_state, target_state, event))
+                    self._set_transition(Transition(current_state, target_state, event))
                     if current_state != target_state:
                         # the target system goes to a new state by the event
                         # explore the transitions on the next state
-                        return self.explore(target_state)
+                        return self._explore(target_state)
             except KeyError as exc:
                 raise UnknownEvent(f"Invalid event {event.name}") from exc
 
@@ -226,7 +232,7 @@ class StateEngine:
         current_state = state  # the state to start exploring
 
         generation = 0
-        while not self.mature():
+        while not self._mature():
             # select a state to explore
             # if the current state is immature, explore the current state
             # otherwise find a immature state that needs least step to reach
@@ -238,7 +244,7 @@ class StateEngine:
                 current_state,
             )
             source = self._go_to_nearest_immature_state(current_state.name)
-            current_state = self.explore(self.get_state(source))
+            current_state = self._explore(self._get_state(source))
             generation += 1
             if generation > 100:
                 logging.warning(

@@ -232,6 +232,16 @@ class FiniteStateMachine:
             result += "--" + arc.name + "->" + arc.head
         return result
 
+    def is_connected(self) -> bool:
+        """
+        Check all the states are connected. If the graph is weak connected
+        return true, we don't need bidirection connected.
+
+        :return: true if the graph is connected
+        :rtype: bool
+        """
+        return self._graph.is_connected(mode="weak")
+
     def load_from_dict(self, data: dict[str, dict[str, dict]]):
         """
         Constructs a graph from a dict-of-dicts representation.
@@ -268,10 +278,27 @@ class FiniteStateMachine:
         data = self._graph.to_dict_dict(use_vids=False, edge_attrs="label")
         return data
 
-    def export_graph(self, filename: str, layout: str) -> None:
+    def update_node_attr(self, data: dict[str, dict[str, any]]):
+        """
+        Update label attribute of nodes.
+
+        :param labels: dict of node name and attributes
+        :type labels: dict[str, str]
+        """
+        for name, attrs in data.items():
+            try:
+                vertex = self._graph.vs.find(name)
+                for key, value in attrs.items():
+                    self._graph.vs[vertex.index][key] = value
+            except ValueError as exc:
+                logging.warning("Node %s does not exist, ignore", name)
+
+    def export_graph(
+        self, filename: str = None, bbox: tuple = (0, 0, 1000, 1000), **kwargs
+    ) -> None:
         """
         Generate a plotting of the graph data and save in a file using given layout
         :param filename: the file to store the plotting, support svg, png, pdf
         :param layout: the layout algorithm
         """
-        plot(self, target=filename, bbox=(0, 0, 1000, 1000), layout=layout)
+        plot(self._graph, target=filename, bbox=bbox, **kwargs)

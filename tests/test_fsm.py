@@ -86,3 +86,28 @@ def test_load_from_dict():
     # THEN
     assert input_dict == output
     logging.info("%s", output)
+
+
+def test_connectivity():
+    """test connectivity of a state machine"""
+    input_dict = {
+        "A": {"B": {"label": 1}, "C": {"label": 2}},
+        "B": {"D": {"label": 3}},
+        "C": {"D": {"label": 4}},
+        "D": {"E": {"label": 5}, "F": {"label": 6}},
+        "E": {"G": {"label": 7}},
+        "F": {"G": {"label": 8}},
+    }
+
+    # WHEN
+    fsm = FiniteStateMachine()
+    fsm.load_from_dict(input_dict)
+
+    # THEN the graph is connected
+    assert fsm.is_connected()
+
+    # WHEN add a new node
+    fsm.add_node("H")
+
+    # THEN the new node does not connect to any other existing nodes
+    assert not fsm.is_connected()
