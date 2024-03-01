@@ -4,6 +4,7 @@ This module defines a finite state machine
 
 import logging
 from dataclasses import dataclass
+from csv import DictWriter, DictReader
 
 import igraph as ig
 from igraph import Graph, plot
@@ -277,6 +278,39 @@ class FiniteStateMachine:
         """
         data = self._graph.to_dict_dict(use_vids=False, edge_attrs="label")
         return data
+
+    def export_to_csv(self, filename="fsm.csv"):
+        """
+        Export the matrix to a csv file
+
+        :param filename: the csv filename
+        :type filename: str, optional
+        """
+        with open(filename, "w", encoding="utf-8", newline="") as csvfile:
+            edge_names = [edge.attributes()["label"] for edge in self._graph.es]
+            fields = ["source"] + edge_names
+            writer = DictWriter(csvfile, fieldnames=fields)
+
+            writer.writeheader()
+            for vertex in self._graph.vs:
+                row = {"source": vertex.attributes()["name"]}
+                for edge in vertex.all_edges():  # add defined transitions
+                    key = edge.attributes()["label"]
+                    value = self._graph.vs[edge.target].attributes()["name"]
+                    row[key] = value
+                for key in edge_names:  # add invalid transitions
+                    if key not in row:
+                        row[key] = ""
+                writer.writerow(row)
+
+    def read_from_csv(self, filename="fsm.csv"):
+        with open(filename, "r", encoding="utf-8", newline="") as csvfile:
+            reader = DictReader(csvfile)
+            for row in reader:
+                source = row.pop("source")
+                for edge, target in row.items():
+                    if target:
+                        self.add_arc(source, target, edge)
 
     def update_node_attr(self, data: dict[str, dict[str, any]]):
         """

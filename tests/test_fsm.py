@@ -5,6 +5,15 @@ This moudle test FiniteStateMachine
 import logging
 from ait.finite_state_machine import FiniteStateMachine, Arrow
 
+SAMPLE_DATA = {
+    "A": {"B": {"label": 1}, "C": {"label": 2}},
+    "B": {"D": {"label": 3}},
+    "C": {"D": {"label": 4}},
+    "D": {"E": {"label": 5}, "F": {"label": 6}},
+    "E": {"G": {"label": 7}},
+    "F": {"G": {"label": 8}},
+}
+
 
 def verify_fsm(fsm: FiniteStateMachine, nodes: list[str], arrows: list[Arrow]):
     """verify a finite state machine is as expected"""
@@ -68,14 +77,7 @@ def test_add_arcs():
 def test_load_from_dict():
     """test load graph from dictionary"""
     # GIVEN
-    input_dict = {
-        "A": {"B": {"label": 1}, "C": {"label": 2}},
-        "B": {"D": {"label": 3}},
-        "C": {"D": {"label": 4}},
-        "D": {"E": {"label": 5}, "F": {"label": 6}},
-        "E": {"G": {"label": 7}},
-        "F": {"G": {"label": 8}},
-    }
+    input_dict = SAMPLE_DATA.copy()
 
     # WHEN
     fsm = FiniteStateMachine()
@@ -90,14 +92,7 @@ def test_load_from_dict():
 
 def test_connectivity():
     """test connectivity of a state machine"""
-    input_dict = {
-        "A": {"B": {"label": 1}, "C": {"label": 2}},
-        "B": {"D": {"label": 3}},
-        "C": {"D": {"label": 4}},
-        "D": {"E": {"label": 5}, "F": {"label": 6}},
-        "E": {"G": {"label": 7}},
-        "F": {"G": {"label": 8}},
-    }
+    input_dict = SAMPLE_DATA.copy()
 
     # WHEN
     fsm = FiniteStateMachine()
@@ -111,3 +106,19 @@ def test_connectivity():
 
     # THEN the new node does not connect to any other existing nodes
     assert not fsm.is_connected()
+
+
+def test_export_to_csv():
+    """test export fsm to csv file"""
+    # GIVEN
+    fsm = FiniteStateMachine()
+    fsm.load_from_dict(SAMPLE_DATA)
+
+    # WHEN
+    fsm.export_to_csv("fsm.csv")
+
+    # THEN
+    fsm2 = FiniteStateMachine()
+    fsm2.read_from_csv("fsm.csv")
+    output_data = fsm2.export_to_dict()
+    assert output_data == SAMPLE_DATA
