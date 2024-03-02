@@ -4,6 +4,7 @@ This module defines a finite state machine
 
 import logging
 from dataclasses import dataclass
+from enum import Enum
 from csv import DictWriter, DictReader
 
 import igraph as ig
@@ -31,6 +32,23 @@ class Arrow:
         return [self.tail, self.head]
 
 
+class Eulerian(Enum):
+    """
+    The Eulerian property of a graph
+    NONE: the graph is not a Eulerian graph
+    CIRCUIT: the graph has a Eulerian cycle, can start from any vertex, walk
+             through every edge one and only one time and go back the start
+             vertex.
+    PATH: the graph has a Eulerian path, can start from one vertex, walk
+          through every edge one and only one time and finished at a different
+          vertex.
+    """
+
+    NONE = 0  # non eulerian graph
+    CIRCUIT = 1  # eulerian graph
+    PATH = 2  # semi-eularian graph
+
+
 class FiniteStateMachine:
     """
     Class of finite state machine (FSM)
@@ -47,7 +65,11 @@ class FiniteStateMachine:
 
     def _edge_to_arrow(self, edge: ig.Edge) -> Arrow:
         vs = self._graph.vs
-        return Arrow(vs[edge.source], vs[edge.target], edge.attributes()["label"])
+        return Arrow(
+            vs[edge.source].attributes()["name"],
+            vs[edge.target].attributes()["name"],
+            edge.attributes()["label"],
+        )
 
     @property
     def nodes(self) -> list[str]:
@@ -69,7 +91,7 @@ class FiniteStateMachine:
         """
         return [self._edge_to_arrow(edge) for edge in self._graph.es]
 
-    def find_node(self, name: str) -> bool:
+    def _has_node(self, name: str) -> bool:
         """
         Get a state by name
 
@@ -92,7 +114,7 @@ class FiniteStateMachine:
         :param state: the new state
         :type state: State
         """
-        if self.find_node(name):
+        if self._has_node(name):
             logging.warning("Skip duplicated vertex %s", name)
             return
 
@@ -179,7 +201,7 @@ class FiniteStateMachine:
         :return: list of vertices' name in order
         :rtype: list[str]
         """
-        if not self.find_node(name):
+        if not self._has_node(name):
             logging.error("Invalid state %s", name)
             return []
 
@@ -233,6 +255,7 @@ class FiniteStateMachine:
             result += "--" + arc.name + "->" + arc.head
         return result
 
+    @property
     def is_connected(self) -> bool:
         """
         Check all the states are connected. If the graph is weak connected
@@ -242,6 +265,15 @@ class FiniteStateMachine:
         :rtype: bool
         """
         return self._graph.is_connected(mode="weak")
+
+    @property
+    def eulerian(self) -> Eulerian:
+        """
+        Check the graph is a semi-Eularian, Eularian graph or not
+
+        :return: type of Eulerian
+        :rtype: Eulerian
+        """
 
     def load_from_dict(self, data: dict[str, dict[str, dict]]):
         """
@@ -287,16 +319,18 @@ class FiniteStateMachine:
         :type filename: str, optional
         """
         with open(filename, "w", encoding="utf-8", newline="") as csvfile:
-            edge_names = [edge.attributes()["label"] for edge in self._graph.es]
+            edge_names = [
+                "E_" + str(edge.attributes()["label"]) for edge in self._graph.es
+            ]
             fields = ["source"] + edge_names
             writer = DictWriter(csvfile, fieldnames=fields)
 
             writer.writeheader()
             for vertex in self._graph.vs:
-                row = {"source": vertex.attributes()["name"]}
-                for edge in vertex.all_edges():  # add defined transitions
-                    key = edge.attributes()["label"]
-                    value = self._graph.vs[edge.target].attributes()["name"]
+                row = {"source": "S_" + vertex.attributes()["name"]}
+                for edge in vertex.out_edges():  # add defined transitions
+                    key = "E_" + str(edge.attributes()["label"])
+                    value = "S_" + self._graph.vs[edge.target].attributes()["name"]
                     row[key] = value
                 for key in edge_names:  # add invalid transitions
                     if key not in row:
@@ -310,7 +344,7 @@ class FiniteStateMachine:
                 source = row.pop("source")
                 for edge, target in row.items():
                     if target:
-                        self.add_arc(source, target, edge)
+                        self.add_arc(source[2:], target[2:], edge[2:])
 
     def update_node_attr(self, data: dict[str, dict[str, any]]):
         """

@@ -6,12 +6,12 @@ import logging
 from ait.finite_state_machine import FiniteStateMachine, Arrow
 
 SAMPLE_DATA = {
-    "A": {"B": {"label": 1}, "C": {"label": 2}},
-    "B": {"D": {"label": 3}},
-    "C": {"D": {"label": 4}},
-    "D": {"E": {"label": 5}, "F": {"label": 6}},
-    "E": {"G": {"label": 7}},
-    "F": {"G": {"label": 8}},
+    "A": {"B": {"label": "1"}, "C": {"label": "2"}},
+    "B": {"D": {"label": "3"}},
+    "C": {"D": {"label": "4"}},
+    "D": {"E": {"label": "5"}, "F": {"label": "6"}},
+    "E": {"G": {"label": "7"}},
+    "F": {"G": {"label": "8"}},
 }
 
 
@@ -21,7 +21,7 @@ def verify_fsm(fsm: FiniteStateMachine, nodes: list[str], arrows: list[Arrow]):
     assert len(fsm.arcs) == len(arrows)
 
     for name in nodes:
-        assert fsm.find_node(name)
+        assert fsm._has_node(name)
 
     for arc in arrows:
         assert fsm.get_arcs(arc.tail, arc.head, arc.name)
