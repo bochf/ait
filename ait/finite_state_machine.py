@@ -274,6 +274,87 @@ class FiniteStateMachine:
         :return: type of Eulerian
         :rtype: Eulerian
         """
+        if not self.is_connected:
+            return Eulerian.NONE
+
+        uneven_degrees = set()
+
+        for vertex in self._graph.vs:
+            logging.info(
+                "vertex %s, degreee=%d, in_degree=%d, out_degree=%d",
+                vertex.attributes()["name"],
+                vertex.degree(),
+                vertex.degree(mode="in"),
+                vertex.degree(mode="out"),
+            )
+            sum = vertex.degree(mode="out") - vertex.degree(mode="in")
+            if sum == 0:  # even vertex
+                continue
+            if sum > 1 or sum < -1:  # degree difference > 1
+                return Eulerian.NONE
+            if sum in uneven_degrees:  # more than 1 hub or sink vertex
+                return Eulerian.NONE
+            uneven_degrees.add(sum)
+        if len(uneven_degrees) == 0:
+            # all the vertex in and out dgrees are the same, has a circuit
+            return Eulerian.CIRCUIT
+        if len(uneven_degrees) == 2:
+            # a path starts from the hub vertex ends at the sink vertex
+            return Eulerian.PATH
+
+        return Eulerian.NONE
+
+    def eulerize(self) -> Eulerian:
+        # if a graph is already a eulerian graph, no-op
+        eulerian = self.eulerian
+        if self.eulerian != Eulerian.NONE:
+            return eulerian
+
+        # check a graph is eulerizable
+        if not self.is_connected:
+            return Eulerian.NONE
+
+        # eulerize a graph by repeating edges between uneven vertices
+        finish = False
+        while not finish:
+            hub, sink = self.devide_vertices_by_degree()
+            paths: list[Arrow] = []
+            for source in sink:
+                for target in hub:
+                    path = self.shortest_path(source, target)
+                    if path:
+                        paths.append(path)
+
+            for path in paths:
+                v_from = self._graph.vs.find(path[0].tail)
+                v_to = self._graph.vs.find(path[-1].head)
+                repeat = min(
+                    v_from.degree(mode="in") - v_from.degree(mode="out"),
+                    v_to.degree(mode="in") - v_to.degree(mode="out"),
+                )
+                logging.info("from=%s, to=%s, repea=%d", v_from, v_to, repeat)
+
+            finish = True
+
+        return self.eulerian
+
+    def devide_vertices_by_degree(
+        self,
+    ) -> tuple[list[str], list[str]]:
+        # store vertices in 2 dictionarys of list, the key of the dictionary
+        # is the degree difference of the vertex, the value is the list of
+        # vertices with the same degreee difference
+        hub_vertices: list[str] = []  # in_degree < out_degree
+        sink_vertices: list[str] = []  # in_degree > out_degree
+
+        for vtx in self._graph.vs:
+            diff = vtx.degree(mode="out") - vtx.degree(mode="in")
+            if diff > 0:
+                hub_vertices.append(vtx.attributes()["name"])
+            elif diff < 0:
+                sink_vertices.append(vtx.attributes()["name"])
+
+        return hub_vertices, sink_vertices
 
     def load_from_dict(self, data: dict[str, dict[str, dict]]):
         """

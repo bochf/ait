@@ -3,7 +3,7 @@ This moudle test FiniteStateMachine
 """
 
 import logging
-from ait.finite_state_machine import FiniteStateMachine, Arrow
+from ait.finite_state_machine import FiniteStateMachine, Arrow, Eulerian
 
 SAMPLE_DATA = {
     "A": {"B": {"label": "1"}, "C": {"label": "2"}},
@@ -92,20 +92,23 @@ def test_load_from_dict():
 
 def test_connectivity():
     """test connectivity of a state machine"""
-    input_dict = SAMPLE_DATA.copy()
+    # GIVEN
+    fsm = FiniteStateMachine()
+
+    # THEN
+    assert not fsm.is_connected
 
     # WHEN
-    fsm = FiniteStateMachine()
-    fsm.load_from_dict(input_dict)
+    fsm.load_from_dict(SAMPLE_DATA)
 
     # THEN the graph is connected
-    assert fsm.is_connected()
+    assert fsm.is_connected
 
     # WHEN add a new node
     fsm.add_node("H")
 
     # THEN the new node does not connect to any other existing nodes
-    assert not fsm.is_connected()
+    assert not fsm.is_connected
 
 
 def test_export_to_csv():
@@ -122,3 +125,68 @@ def test_export_to_csv():
     fsm2.read_from_csv("fsm.csv")
     output_data = fsm2.export_to_dict()
     assert output_data == SAMPLE_DATA
+
+
+def test_eulerian():
+    """test eulerian of a graph"""
+    # GIVEN an empty graph
+    fsm = FiniteStateMachine()
+
+    # THEN empty graph is not a eulerian graph
+    assert fsm.eulerian == Eulerian.NONE
+
+    # WHEN add a node
+    fsm.add_node("A")
+
+    # THEN the graph is a eulerian graph
+    assert fsm.eulerian == Eulerian.CIRCUIT
+
+    # WHEN add another node
+    fsm.add_node("B")
+
+    # THEN the graph is still not a eulerian graph be cause 2 nodes are not connected
+    assert fsm.eulerian == Eulerian.NONE
+
+    # WHEN connecte the 2 nodes
+    fsm.add_arc("A", "B", "INVITE")
+
+    # THEN the graph has a eulerian path A to B
+    assert fsm.eulerian == Eulerian.PATH
+
+    # WHN add a backward connection
+    fsm.add_arc("B", "A", "OK")
+
+    # THEN the graph has a eulerian circuit
+    assert fsm.eulerian == Eulerian.CIRCUIT
+
+    # WHEN add a forward edge again
+    fsm.add_arc("A", "B", "ACK")
+
+    # THEN the graph becomes a semi eulerian graph again
+    assert fsm.eulerian == Eulerian.PATH
+
+
+def test_devide():
+    """test devide vertices to hub and sink"""
+    # GIVEN
+    fsm = FiniteStateMachine()
+    fsm.load_from_dict(SAMPLE_DATA)
+
+    # WHEN
+    hub, sink = fsm.devide_vertices_by_degree()
+
+    # THEN
+    assert hub == {2: ["A"]}
+    assert sink == {2: ["G"]}
+
+
+def test_eulerize():
+    """test eularize graph"""
+    # GIVEN
+    input_data = {}
+    fsm = FiniteStateMachine()
+    fsm.load_from_dict(input_data)
+    fsm.export_graph("euler.svg", (0, 0, 800, 1000))
+
+    # WHEN
+    fsm.eulerize()
