@@ -88,10 +88,6 @@ class State(ABC):
     def __ne__(self, __value: object) -> bool:
         return not self.__eq__(__value)
 
-    @abstractmethod
-    def fetch_state(self, **kwargs):
-        """abstract method of fetching current state"""
-
 
 class InvalidState(State):
     """Invalid state class"""

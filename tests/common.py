@@ -17,13 +17,9 @@ class TestState(State):
     """The subclass inherited from State for testing"""
 
     def __init__(self, name: str, value: dict):
-        super().__init__()
-        self.fetch_state(name=name, value=value)
-
-    def fetch_state(self, **kwargs):
-        self._name = kwargs["name"]
-        self._label = self._name
-        self._value = kwargs["value"]
+        self._name = name
+        self._label = name
+        self._valid = value
         self._valid = True
 
 
@@ -152,7 +148,7 @@ class TestApp(SUT):
         self._current_state = value
 
     @property
-    def event_list(self) -> dict[str, Event]:
+    def events(self) -> dict[str, Event]:
         """The event list of the system"""
         return self._event_list
 

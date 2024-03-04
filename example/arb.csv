@@ -1,0 +1,9 @@
+S_source,E_createRoom,E_inviteUser,E_accept,E_decline,E_content,E_removeUser,E_logoff
+"no room","pre-invited","","","","","","no room"
+"in room","in room","","","","in room","removed","in room 2"
+"invited","invited","invited","in room","rejected","invited","removed","invited 2"
+"rejected","pre-invited","invited","","","rejected","","no room"
+"removed","pre-invited","invited","","","removed","removed","no room"
+"pre-invited","pre-invited","invited","","","invited","removed","no room"
+"in room 2","in room","","","","","","in room 2"
+"invited 2","invited","","","","","","invited 2"

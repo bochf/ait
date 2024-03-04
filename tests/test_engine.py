@@ -43,7 +43,7 @@ def test_invalide_transition():
     test_app = TestApp()
     for source in TestApp.state_list.values():
         test_app.state = source
-        for event in test_app.event_list.values():
+        for event in test_app.events.values():
             # WHEN
             if not event.name in TestApp.transition_table[source.name]:
                 response = event.fire(test_app, {})

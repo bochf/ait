@@ -317,44 +317,67 @@ class FiniteStateMachine:
         # eulerize a graph by repeating edges between uneven vertices
         finish = False
         while not finish:
-            hub, sink = self.devide_vertices_by_degree()
-            paths: list[Arrow] = []
-            for source in sink:
-                for target in hub:
-                    path = self.shortest_path(source, target)
-                    if path:
-                        paths.append(path)
-
-            for path in paths:
-                v_from = self._graph.vs.find(path[0].tail)
-                v_to = self._graph.vs.find(path[-1].head)
-                repeat = min(
-                    v_from.degree(mode="in") - v_from.degree(mode="out"),
-                    v_to.degree(mode="in") - v_to.degree(mode="out"),
+            # get all the
+            hub, sink = self.get_uneven_pair()
+            if not hub and not sink:
+                logging.debug("No uneven vertex, the graph is a eulerian graph.")
+                return self.eulerian
+            if not hub or not sink:
+                logging.error(
+                    "Only has hub vertex %s or sink vertex, the graph is invalid.",
+                    hub,
+                    sink,
                 )
-                logging.info("from=%s, to=%s, repea=%d", v_from, v_to, repeat)
+                return Eulerian.NONE
 
-            finish = True
+            path = self.shortest_path(sink, hub)
+            if not path:
+                logging.warning(
+                    "No path from %s to %s, the graph is not eulerizable.", sink, hub
+                )
+                return Eulerian.NONE
+
+            # add arcs from the sink node to the hub node to make at least one node even
+            self.duplicate_path(path)
 
         return self.eulerian
 
-    def devide_vertices_by_degree(
-        self,
-    ) -> tuple[list[str], list[str]]:
-        # store vertices in 2 dictionarys of list, the key of the dictionary
-        # is the degree difference of the vertex, the value is the list of
-        # vertices with the same degreee difference
-        hub_vertices: list[str] = []  # in_degree < out_degree
-        sink_vertices: list[str] = []  # in_degree > out_degree
+    def get_uneven_pair(self) -> tuple[str, str]:
+        """
+        Get one hub and one sink vertices from the graph
+
+        :return: pair of vertices name
+        :rtype: tuple[str, str]
+        """
+        hub = ""  # in_degree < out_degree
+        sink = ""  # in_degree > out_degree
 
         for vtx in self._graph.vs:
             diff = vtx.degree(mode="out") - vtx.degree(mode="in")
             if diff > 0:
-                hub_vertices.append(vtx.attributes()["name"])
+                hub = vtx.attributes()["name"]
             elif diff < 0:
-                sink_vertices.append(vtx.attributes()["name"])
+                sink = vtx.attributes()["name"]
 
-        return hub_vertices, sink_vertices
+            if hub and sink:  # stop search when both are found
+                break
+
+        return hub, sink
+
+    def duplicate_path(self, path: list[Arrow]):
+        if not path:
+            return
+
+        v_from = self._graph.vs.find(path[0].tail)
+        v_to = self._graph.vs.find(path[-1].head)
+        repeat = min(
+            v_from.degree(mode="in") - v_from.degree(mode="out"),
+            v_to.degree(mode="out") - v_to.degree(mode="in"),
+        )
+        for _ in range(repeat):
+            # copy the path until one of the vertex is balanced
+            for arc in path:
+                self.add_arc(arc.tail, arc.head, arc.name, unique=False)
 
     def load_from_dict(self, data: dict[str, dict[str, dict]]):
         """
@@ -392,9 +415,9 @@ class FiniteStateMachine:
         data = self._graph.to_dict_dict(use_vids=False, edge_attrs="label")
         return data
 
-    def export_to_csv(self, filename="fsm.csv"):
+    def write_to_csv(self, filename="fsm.csv"):
         """
-        Export the matrix to a csv file
+        Save the matrix to a csv file
 
         :param filename: the csv filename
         :type filename: str, optional
@@ -419,6 +442,17 @@ class FiniteStateMachine:
                 writer.writerow(row)
 
     def read_from_csv(self, filename="fsm.csv"):
+        """
+        Load the data from a csv file.
+        The first line of the csv file is a string list stars with "S_source"
+        followed by event names with prefix "E_".
+        The first column of the csv file is the state names.
+        The rest of the data is the target state name when an event happens
+        at source state.
+
+        :param filename: the csv filename
+        :type filename: str, optional
+        """
         with open(filename, "r", encoding="utf-8", newline="") as csvfile:
             reader = DictReader(csvfile)
             for row in reader:

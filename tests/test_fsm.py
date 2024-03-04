@@ -118,7 +118,7 @@ def test_export_to_csv():
     fsm.load_from_dict(SAMPLE_DATA)
 
     # WHEN
-    fsm.export_to_csv("fsm.csv")
+    fsm.write_to_csv("fsm.csv")
 
     # THEN
     fsm2 = FiniteStateMachine()
@@ -173,7 +173,7 @@ def test_devide():
     fsm.load_from_dict(SAMPLE_DATA)
 
     # WHEN
-    hub, sink = fsm.devide_vertices_by_degree()
+    hub, sink = fsm.get_uneven_pair()
 
     # THEN
     assert hub == {2: ["A"]}
@@ -183,10 +183,19 @@ def test_devide():
 def test_eulerize():
     """test eularize graph"""
     # GIVEN
-    input_data = {}
+    input_data = {
+        "A": {"B": {"label": "ab"}, "C": {"label": "ac"}, "D": {"label": "ad"}},
+        "B": {"C": {"label": "bc"}, "D": {"label": "ad"}},
+        "C": {"D": {"label": "cd"}},
+        "D": {"A": {"label": "da"}},
+    }
     fsm = FiniteStateMachine()
     fsm.load_from_dict(input_data)
-    fsm.export_graph("euler.svg", (0, 0, 800, 1000))
+    fsm.export_graph("fsm.svg", (0, 0, 600, 600), margin=100)
 
     # WHEN
     fsm.eulerize()
+
+    # THEN
+    assert fsm.eulerian != Eulerian.NONE
+    fsm.export_graph("euler.svg", (0, 0, 600, 600), margin=100)
