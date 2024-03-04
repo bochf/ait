@@ -19,7 +19,7 @@ class TestState(State):
     def __init__(self, name: str, value: dict):
         self._name = name
         self._label = name
-        self._valid = value
+        self._value = value
         self._valid = True
 
 
@@ -148,7 +148,7 @@ class TestApp(SUT):
         self._current_state = value
 
     @property
-    def events(self) -> dict[str, Event]:
+    def event_list(self) -> dict[str, Event]:
         """The event list of the system"""
         return self._event_list
 

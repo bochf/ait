@@ -324,7 +324,7 @@ class FiniteStateMachine:
                 return self.eulerian
             if not hub or not sink:
                 logging.error(
-                    "Only has hub vertex %s or sink vertex, the graph is invalid.",
+                    "Only has hub vertex %s or sink vertex %s, the graph is invalid.",
                     hub,
                     sink,
                 )

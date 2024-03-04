@@ -8,7 +8,8 @@
 
 import logging
 
-from ait.base import State, SUT, InvalidState, Transition
+from ait.base import State, InvalidState, Transition
+from ait.sut import SUT
 from ait.errors import UnknownEvent, UnknownState
 from ait.finite_state_machine import FiniteStateMachine, Arrow
 
@@ -67,6 +68,12 @@ class StateEngine:
 
     @property
     def state_machine(self) -> FiniteStateMachine:
+        """
+        Get state machine
+
+        :return: fsm
+        :rtype: FiniteStateMachine
+        """
         return self._fsm
 
     def _is_mature_state(self, name: str) -> bool:
@@ -76,6 +83,8 @@ class StateEngine:
         except KeyError as exc:
             logging.warning("State % does not exist", name)
             raise UnknownState from exc
+        except TypeError as exc:
+            logging.warning("Error occured %s, name=%s", exc, name)
 
     def _get_immature_states(self) -> list[str]:
         return [name for name in self._matrix if not self._is_mature_state(name)]
@@ -132,6 +141,8 @@ class StateEngine:
             return self._matrix[state_name]["source"]
         except KeyError:
             return None
+        except TypeError as exc:
+            logging.warning("Error occured %s, state=%s", exc, state_name)
 
     def _set_transition(self, transition: Transition):
         """
@@ -189,7 +200,11 @@ class StateEngine:
         :return: a mature state where all the events are exercised.
         :rtype: State
         """
-        if not current_state.name in self._matrix:
+        if not isinstance(current_state, State):
+            logging.warning("Wrong object %s", current_state)
+            raise UnknownEvent
+
+        if current_state.name not in self._matrix:
             logging.error("State %s does not exist", current_state.name)
             raise UnknownEvent(f"Invalid state {current_state.name}")
 
@@ -217,6 +232,12 @@ class StateEngine:
                     if current_state != target_state:
                         # the target system goes to a new state by the event
                         # explore the transitions on the next state
+                        logging.debug(
+                            "State changed to %s when running %s on %s",
+                            target_state.name,
+                            event.name,
+                            current_state.name,
+                        )
                         return self._explore(target_state)
             except KeyError as exc:
                 raise UnknownEvent(f"Invalid event {event.name}") from exc
@@ -265,6 +286,10 @@ class StateEngine:
             path1 = self._fsm.shortest_path(source, target)
         if source != self._init_state.name:
             # try start from initial state
+            if not self._is_mature_state(self._init_state.name):
+                self._sut.reset()
+                return self._init_state.name
+
             target = self._find_nearest_immature_state(self._init_state.name)
             # there must be an immature state reachable from the initial state
             path2 = self._fsm.shortest_path(self._init_state.name, target)

@@ -103,11 +103,13 @@ class MockArbiter(SUT):
         :rtype: State
         """
         self._current_state = MockArbiter.states["no room"]
+        logging.info("Start the service, current state=%s", self._current_state.name)
         return self._current_state
 
     def reset(self):
         """reset the system to the initial state"""
         self._current_state = MockArbiter.states["no room"]
+        logging.info("Reset state to %s", self._current_state.name)
 
     @property
     def state(self) -> State:
@@ -136,6 +138,9 @@ class MockArbiter(SUT):
         try:
             source = self._current_state.name
             event = next(iter(request))
+            if event == "acknowledge":
+                event = request["acknowledge"]["action"]
+            logging.info("Processing request %s, current state: %s", event, source)
             target = MockArbiter.transitions[source][event]
             self._current_state = MockArbiter.states[target]
             return {"success": 0}

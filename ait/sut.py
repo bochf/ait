@@ -51,7 +51,7 @@ class SUT(ABC):
 
     @property
     @abstractmethod
-    def events(self) -> dict[Event]:
+    def event_list(self) -> dict[str, Event]:
         """The dictionary of event name and the event"""
 
     @abstractmethod

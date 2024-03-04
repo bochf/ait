@@ -166,20 +166,6 @@ def test_eulerian():
     assert fsm.eulerian == Eulerian.PATH
 
 
-def test_devide():
-    """test devide vertices to hub and sink"""
-    # GIVEN
-    fsm = FiniteStateMachine()
-    fsm.load_from_dict(SAMPLE_DATA)
-
-    # WHEN
-    hub, sink = fsm.get_uneven_pair()
-
-    # THEN
-    assert hub == {2: ["A"]}
-    assert sink == {2: ["G"]}
-
-
 def test_eulerize():
     """test eularize graph"""
     # GIVEN

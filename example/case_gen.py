@@ -13,7 +13,7 @@ from example.st_arb import ArbiterState
 from example.evt_arb import ArbiterEvent
 
 
-def _main():
+def test_arb():
     """main entry"""
     test_data = {
         "roomId": "chat-123",
@@ -28,10 +28,9 @@ def _main():
     }
     arb = MockArbiter(test_data)
     engine = StateEngine(arb)
-    fsm = FiniteStateMachine()
 
     engine.evolve(MockArbiter.states["no room"])
 
-
-if __name__ == "__main__":
-    _main()
+    fsm = engine.state_machine
+    fsm.write_to_csv("fsm.csv")
+    fsm.export_graph("arb.svg")
