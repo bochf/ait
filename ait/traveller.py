@@ -1,15 +1,45 @@
 import collections
+import logging
 
 from igraph import Graph
 
+from ait.utils import Arrow, Eulerian, is_eulerian, eulerize
+from ait.errors import UnknownState
+
+
 class Hierholzer:
 
-    def __init__(self, graph: Graph, matrix: list[list[str]]):
-        self._matrix = matrix
-        self._graph = graph.copy()
+    def __init__(self, graph: Graph):
+        self._matrix = []
+        self._graph: Graph = graph.copy()
+        self._track = []
+
+    def dfs(self, current: str):
+        try:
+            logging.debug("Visit vertex %s", current)
+            vertex = self._graph.vs.find(current)
+            out_edges = vertex.out_edges()
+            while out_edges:
+                edge = out_edges[0]
+                # move to the adjacent vertex and delete the edge
+                adjacent = self._graph.vs[edge.target].attributes()["name"]
+                arrow = Arrow(current, adjacent, edge.attributes()["name"])
+                logging.debug("Visit edge %s", arrow)
+                self._track.append(arrow)
+                self._graph.delete_edges(edge.index)
+                self.dfs(adjacent)
+                out_edges = vertex.out_edges()
+        except ValueError as exc:
+            logging.error("Error %s", exc)
+            raise UnknownState from exc
 
     def travel(self, source: str):
-        pass
+        if is_eulerian(self._graph) == Eulerian.NONE:
+            eulerize(self._graph)
+
+        self._track.clear()
+        self.dfs(source)
+        return self._track
 
     def find_itinerary(self):
         def dfs(cur, graph, res):
