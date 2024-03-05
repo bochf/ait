@@ -98,10 +98,10 @@ def test_export_to_csv():
     fsm.load_from_dict(SAMPLE_DATA)
 
     # WHEN
-    fsm.write_to_csv("fsm.csv")
+    fsm.write_to_csv("logs/test_fsm.csv")
 
     # THEN
     fsm2 = FiniteStateMachine()
-    fsm2.read_from_csv("fsm.csv")
+    fsm2.read_from_csv("logs/test_fsm.csv")
     output_data = fsm2.export_to_dict()
     assert output_data == SAMPLE_DATA
