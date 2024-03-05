@@ -94,17 +94,13 @@ class InvalidState(State):
 
     def __init__(self):
         """constructor"""
-        super().__init__()
-        self.fetch_state()
-
-    def __str__(self) -> str:
-        return "invalid state"
-
-    def fetch_state(self, **kwargs):
         self._name = "invalid"
         self._label = "invalid"
         self._valid = False
         self._value = {}
+
+    def __str__(self) -> str:
+        return "invalid state"
 
 
 class Event(ABC):

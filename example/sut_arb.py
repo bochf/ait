@@ -73,7 +73,7 @@ class MockArbiter(SUT):
         "removed": {
             "createRoom": "pre-invited",
             "inviteUser": "invited",
-            "content": "invited",
+            "content": "removed",
             "removeUser": "removed",
             "logoff": "no room",
         },

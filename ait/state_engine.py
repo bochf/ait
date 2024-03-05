@@ -11,7 +11,8 @@ import logging
 from ait.base import State, InvalidState, Transition
 from ait.sut import SUT
 from ait.errors import UnknownEvent, UnknownState
-from ait.finite_state_machine import FiniteStateMachine, Arrow
+from ait.finite_state_machine import FiniteStateMachine
+from ait.utils import Arrow, shortest_path
 
 INVALID_STATE = InvalidState()
 
@@ -83,8 +84,6 @@ class StateEngine:
         except KeyError as exc:
             logging.warning("State % does not exist", name)
             raise UnknownState from exc
-        except TypeError as exc:
-            logging.warning("Error occured %s, name=%s", exc, name)
 
     def _get_immature_states(self) -> list[str]:
         return [name for name in self._matrix if not self._is_mature_state(name)]
@@ -141,8 +140,6 @@ class StateEngine:
             return self._matrix[state_name]["source"]
         except KeyError:
             return None
-        except TypeError as exc:
-            logging.warning("Error occured %s, state=%s", exc, state_name)
 
     def _set_transition(self, transition: Transition):
         """
@@ -283,7 +280,7 @@ class StateEngine:
 
         target = self._find_nearest_immature_state(source)
         if target:
-            path1 = self._fsm.shortest_path(source, target)
+            path1 = shortest_path(self._fsm.graph, source, target)
         if source != self._init_state.name:
             # try start from initial state
             if not self._is_mature_state(self._init_state.name):
@@ -292,7 +289,7 @@ class StateEngine:
 
             target = self._find_nearest_immature_state(self._init_state.name)
             # there must be an immature state reachable from the initial state
-            path2 = self._fsm.shortest_path(self._init_state.name, target)
+            path2 = shortest_path(self._fsm.graph, self._init_state.name, target)
 
         if len(path1) <= len(path2):
             # go from current state

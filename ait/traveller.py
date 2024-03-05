@@ -1,10 +1,15 @@
-from typing import List
 import collections
 
+from igraph import Graph
 
 class Hierholzer:
-    def __init__(self, matrix: List[List[str]]):
+
+    def __init__(self, graph: Graph, matrix: list[list[str]]):
         self._matrix = matrix
+        self._graph = graph.copy()
+
+    def travel(self, source: str):
+        pass
 
     def find_itinerary(self):
         def dfs(cur, graph, res):

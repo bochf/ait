@@ -3,51 +3,12 @@ This module defines a finite state machine
 """
 
 import logging
-from dataclasses import dataclass
-from enum import Enum
 from csv import DictWriter, DictReader
 
 import igraph as ig
 from igraph import Graph, plot
 
-
-@dataclass
-class Arrow:
-    """
-    An arrow is a directed edge in the directed graph with an ordered pair of
-    vertices and an arc connects them. The arrow's direction is from tail to
-    head.
-    """
-
-    tail: str
-    head: str
-    name: str
-
-    def __str__(self) -> str:
-        return f"{self.tail}--{self.name}->{self.head}"
-
-    @property
-    def end_points(self) -> list[str]:
-        """return tail/head pair"""
-        return [self.tail, self.head]
-
-
-class Eulerian(Enum):
-    """
-    The Eulerian property of a graph
-    NONE: the graph is not a Eulerian graph
-    CIRCUIT: the graph has a Eulerian cycle, can start from any vertex, walk
-             through every edge one and only one time and go back the start
-             vertex.
-    PATH: the graph has a Eulerian path, can start from one vertex, walk
-          through every edge one and only one time and finished at a different
-          vertex.
-    """
-
-    NONE = 0  # non eulerian graph
-    CIRCUIT = 1  # eulerian graph
-    PATH = 2  # semi-eularian graph
-
+from ait.utils import Arrow
 
 class FiniteStateMachine:
     """
@@ -68,8 +29,18 @@ class FiniteStateMachine:
         return Arrow(
             vs[edge.source].attributes()["name"],
             vs[edge.target].attributes()["name"],
-            edge.attributes()["label"],
+            edge.attributes()["name"],
         )
+
+    @property
+    def graph(self) -> Graph:
+        """
+        Get the graph
+
+        :return: graph
+        :rtype: Graph
+        """
+        return self._graph
 
     @property
     def nodes(self) -> list[str]:
@@ -165,7 +136,7 @@ class FiniteStateMachine:
         return [
             self._edge_to_arrow(edge)
             for edge in edges
-            if not event or edge.attributes()["label"] == event
+            if not event or edge.attributes()["name"] == event
         ]
 
     def add_arc(self, source: str, target: str, event: str, unique: bool = True):
@@ -189,7 +160,7 @@ class FiniteStateMachine:
         self.add_node(source)
         self.add_node(target)
 
-        self._graph.add_edge(source, target, label=event)
+        self._graph.add_edge(source, target, name=event)
         logging.info("Add new edge %s--%s->%s", source, event, target)
 
     def bfs(self, name: str) -> list[str]:
@@ -207,177 +178,6 @@ class FiniteStateMachine:
 
         vids = self._graph.bfs(name)[0]  # vertex ids visited in BFS order
         return [self._graph.vs[vid].attributes()["name"] for vid in vids]
-
-    def shortest_path(self, source: str, target: str) -> list[Arrow]:
-        """
-        Get the shortest path between the source and target
-
-        :param source: the name of the source state
-        :type source: str
-        :param target: the name of the target state
-        :type target: str
-        :return: list of arrows
-        :rtype: list[Arrow]
-        """
-        path = self._graph.get_shortest_path(source, target, output="epath")
-        if not path:
-            logging.warning("No path from %s to %s", source, target)
-            return []
-
-        result = []
-        vs = self._graph.vs
-        for eid in path:
-            edge = self._graph.es[eid]
-            result.append(
-                Arrow(
-                    vs[edge.source].attributes()["name"],
-                    vs[edge.target].attributes()["name"],
-                    edge.attributes()["label"],
-                )
-            )
-
-        return result
-
-    def path_to_str(self, path: list[Arrow]) -> str:
-        """
-        Dump a path to readable string
-
-        :param path: list of arrows
-        :type path: list[Arrow]
-        :return: the string format state0--event0->state1--event1->state2...stateN
-        :rtype: str
-        """
-        if not path:
-            return "NO PATH"
-
-        result = path[0].tail
-        for arc in path:
-            result += "--" + arc.name + "->" + arc.head
-        return result
-
-    @property
-    def is_connected(self) -> bool:
-        """
-        Check all the states are connected. If the graph is weak connected
-        return true, we don't need bidirection connected.
-
-        :return: true if the graph is connected
-        :rtype: bool
-        """
-        return self._graph.is_connected(mode="weak")
-
-    @property
-    def eulerian(self) -> Eulerian:
-        """
-        Check the graph is a semi-Eularian, Eularian graph or not
-
-        :return: type of Eulerian
-        :rtype: Eulerian
-        """
-        if not self.is_connected:
-            return Eulerian.NONE
-
-        uneven_degrees = set()
-
-        for vertex in self._graph.vs:
-            logging.info(
-                "vertex %s, degreee=%d, in_degree=%d, out_degree=%d",
-                vertex.attributes()["name"],
-                vertex.degree(),
-                vertex.degree(mode="in"),
-                vertex.degree(mode="out"),
-            )
-            sum = vertex.degree(mode="out") - vertex.degree(mode="in")
-            if sum == 0:  # even vertex
-                continue
-            if sum > 1 or sum < -1:  # degree difference > 1
-                return Eulerian.NONE
-            if sum in uneven_degrees:  # more than 1 hub or sink vertex
-                return Eulerian.NONE
-            uneven_degrees.add(sum)
-        if len(uneven_degrees) == 0:
-            # all the vertex in and out dgrees are the same, has a circuit
-            return Eulerian.CIRCUIT
-        if len(uneven_degrees) == 2:
-            # a path starts from the hub vertex ends at the sink vertex
-            return Eulerian.PATH
-
-        return Eulerian.NONE
-
-    def eulerize(self) -> Eulerian:
-        # if a graph is already a eulerian graph, no-op
-        eulerian = self.eulerian
-        if self.eulerian != Eulerian.NONE:
-            return eulerian
-
-        # check a graph is eulerizable
-        if not self.is_connected:
-            return Eulerian.NONE
-
-        # eulerize a graph by repeating edges between uneven vertices
-        finish = False
-        while not finish:
-            # get all the
-            hub, sink = self.get_uneven_pair()
-            if not hub and not sink:
-                logging.debug("No uneven vertex, the graph is a eulerian graph.")
-                return self.eulerian
-            if not hub or not sink:
-                logging.error(
-                    "Only has hub vertex %s or sink vertex %s, the graph is invalid.",
-                    hub,
-                    sink,
-                )
-                return Eulerian.NONE
-
-            path = self.shortest_path(sink, hub)
-            if not path:
-                logging.warning(
-                    "No path from %s to %s, the graph is not eulerizable.", sink, hub
-                )
-                return Eulerian.NONE
-
-            # add arcs from the sink node to the hub node to make at least one node even
-            self.duplicate_path(path)
-
-        return self.eulerian
-
-    def get_uneven_pair(self) -> tuple[str, str]:
-        """
-        Get one hub and one sink vertices from the graph
-
-        :return: pair of vertices name
-        :rtype: tuple[str, str]
-        """
-        hub = ""  # in_degree < out_degree
-        sink = ""  # in_degree > out_degree
-
-        for vtx in self._graph.vs:
-            diff = vtx.degree(mode="out") - vtx.degree(mode="in")
-            if diff > 0:
-                hub = vtx.attributes()["name"]
-            elif diff < 0:
-                sink = vtx.attributes()["name"]
-
-            if hub and sink:  # stop search when both are found
-                break
-
-        return hub, sink
-
-    def duplicate_path(self, path: list[Arrow]):
-        if not path:
-            return
-
-        v_from = self._graph.vs.find(path[0].tail)
-        v_to = self._graph.vs.find(path[-1].head)
-        repeat = min(
-            v_from.degree(mode="in") - v_from.degree(mode="out"),
-            v_to.degree(mode="out") - v_to.degree(mode="in"),
-        )
-        for _ in range(repeat):
-            # copy the path until one of the vertex is balanced
-            for arc in path:
-                self.add_arc(arc.tail, arc.head, arc.name, unique=False)
 
     def load_from_dict(self, data: dict[str, dict[str, dict]]):
         """
@@ -412,7 +212,7 @@ class FiniteStateMachine:
         :return: _description_
         :rtype: dict[str, dict[str, dict]]
         """
-        data = self._graph.to_dict_dict(use_vids=False, edge_attrs="label")
+        data = self._graph.to_dict_dict(use_vids=False, edge_attrs="name")
         return data
 
     def write_to_csv(self, filename="fsm.csv"):
@@ -423,18 +223,18 @@ class FiniteStateMachine:
         :type filename: str, optional
         """
         with open(filename, "w", encoding="utf-8", newline="") as csvfile:
-            edge_names = [
-                "E_" + str(edge.attributes()["label"]) for edge in self._graph.es
-            ]
-            fields = ["source"] + edge_names
+            edge_names = set(
+                "E_" + str(edge.attributes()["name"]) for edge in self._graph.es
+            )
+            fields = ["S_source"] + list(edge_names)
             writer = DictWriter(csvfile, fieldnames=fields)
 
             writer.writeheader()
             for vertex in self._graph.vs:
-                row = {"source": "S_" + vertex.attributes()["name"]}
+                row = {"S_source": vertex.attributes()["name"]}
                 for edge in vertex.out_edges():  # add defined transitions
-                    key = "E_" + str(edge.attributes()["label"])
-                    value = "S_" + self._graph.vs[edge.target].attributes()["name"]
+                    key = "E_" + str(edge.attributes()["name"])
+                    value = self._graph.vs[edge.target].attributes()["name"]
                     row[key] = value
                 for key in edge_names:  # add invalid transitions
                     if key not in row:
@@ -456,32 +256,60 @@ class FiniteStateMachine:
         with open(filename, "r", encoding="utf-8", newline="") as csvfile:
             reader = DictReader(csvfile)
             for row in reader:
-                source = row.pop("source")
+                source = row.pop("S_source")
                 for edge, target in row.items():
                     if target:
-                        self.add_arc(source[2:], target[2:], edge[2:])
+                        self.add_arc(source, target, edge[2:])
 
     def update_node_attr(self, data: dict[str, dict[str, any]]):
         """
-        Update label attribute of nodes.
+        Update nodes attributes for visualization
 
-        :param labels: dict of node name and attributes
-        :type labels: dict[str, str]
+        :param data: the map of node name and attributes
+        :type data: dict[str, dict[str, any]]
         """
-        for name, attrs in data.items():
+        vs = self._graph.vs
+        for vertex in vs:
+            vertex_name = vertex.attributes()["name"]
             try:
-                vertex = self._graph.vs.find(name)
+                attrs = data[vertex_name]
                 for key, value in attrs.items():
-                    self._graph.vs[vertex.index][key] = value
-            except ValueError as exc:
-                logging.warning("Node %s does not exist, ignore", name)
+                    vs[vertex.index][key] = value
+            except KeyError:
+                continue
+
+    def update_edge_attr(self, data: dict[str, dict[str, any]]):
+        """
+        Update edges attributes for visualization
+
+        :param data: the map of edge name and attributes
+        :type data: dict[str, dict[str, any]]
+        """
+        es = self._graph.es
+        for edge in es:
+            edge_name = edge.attributes()["name"]
+            try:
+                attrs = data[edge_name]
+                for key, value in attrs.items():
+                    es[edge.index][key] = value
+            except KeyError:
+                continue
 
     def export_graph(
-        self, filename: str = None, bbox: tuple = (0, 0, 1000, 1000), **kwargs
+        self,
+        filename: str = None,
+        bbox: tuple = (0, 0, 1000, 1000),
+        show_self_circle: bool = True,
+        **kwargs,
     ) -> None:
         """
         Generate a plotting of the graph data and save in a file using given layout
         :param filename: the file to store the plotting, support svg, png, pdf
         :param layout: the layout algorithm
         """
-        plot(self._graph, target=filename, bbox=bbox, **kwargs)
+        if show_self_circle:
+            plot(self._graph, target=filename, bbox=bbox, **kwargs)
+        else:
+            g = self._graph.copy()
+            g.delete_edges([edge.index for edge in g.es if edge.source == edge.target])
+            plot(g, target=filename, bbox=bbox, **kwargs)
