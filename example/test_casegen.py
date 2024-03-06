@@ -6,6 +6,7 @@ import logging
 
 from ait.state_engine import StateEngine
 from ait.utils import eulerize
+from ait.traveller import Hierholzer
 from example.sut_arb import MockArbiter
 
 
@@ -42,3 +43,12 @@ def test_arb():
     # generate test cases
     eulerize(fsm.graph)
     fsm.export_graph("logs/euler_arb.svg", show_self_circle=False, margin=150)
+    hhz = Hierholzer(fsm.graph)
+    path = hhz.travel("no room")
+    assert path
+    logging.info("path length=%d", len(path))
+
+    result = path[-1][0]
+    for state, event in path[-2::-1]:
+        result += "--" + event + "->" + state
+    logging.info("path=%s", result)

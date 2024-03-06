@@ -30,4 +30,6 @@ def test_euler_path():
     fsm.update_edge_attr(e_labels)
     fsm.export_graph("logs/fsm.svg", (0, 0, 500, 500))
 
-    track = hhz.travel("A")
+    track = hhz.travel("B")
+    for path in track[::-1]:
+        logging.info("go to %s from %s", path[0], path[1])

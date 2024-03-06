@@ -1,7 +1,7 @@
 import collections
 import logging
 
-from igraph import Graph
+from igraph import Graph, Edge
 
 from ait.utils import Arrow, Eulerian, is_eulerian, eulerize
 from ait.errors import UnknownState
@@ -14,31 +14,39 @@ class Hierholzer:
         self._graph: Graph = graph.copy()
         self._track = []
 
-    def dfs(self, current: str):
+    def dfs(self, graph: Graph, current: str, incoming_edge: str = ""):
         try:
+            vertex = graph.vs.find(current)
             logging.debug("Visit vertex %s", current)
-            vertex = self._graph.vs.find(current)
-            out_edges = vertex.out_edges()
-            while out_edges:
+            while True:
+                out_edges = vertex.out_edges()
+                if not out_edges:
+                    # push the vertex and the incoming edge into the stack when
+                    # there is no outgoing edge
+                    self._track.append((current, incoming_edge))
+                    break
+
                 edge = out_edges[0]
                 # move to the adjacent vertex and delete the edge
-                adjacent = self._graph.vs[edge.target].attributes()["name"]
-                arrow = Arrow(current, adjacent, edge.attributes()["name"])
-                logging.debug("Visit edge %s", arrow)
-                self._track.append(arrow)
-                self._graph.delete_edges(edge.index)
-                self.dfs(adjacent)
-                out_edges = vertex.out_edges()
+                adjacent = graph.vs[edge.target].attributes()["name"]
+                edge_name = edge.attributes()["name"]
+                graph.delete_edges(edge.index)
+                self.dfs(graph, adjacent, edge_name)
         except ValueError as exc:
             logging.error("Error %s", exc)
             raise UnknownState from exc
 
-    def travel(self, source: str):
-        if is_eulerian(self._graph) == Eulerian.NONE:
-            eulerize(self._graph)
+    def travel(self, source: str, self_circle=False):
+        graph = self._graph.copy()
+        if not self_circle:
+            # delete self circle edge
+            self_circuit = lambda edge: edge.source == edge.target
+            graph.delete_edges(self_circuit)
+        if is_eulerian(graph) == Eulerian.NONE:
+            eulerize(graph)
 
         self._track.clear()
-        self.dfs(source)
+        self.dfs(graph, source)
         return self._track
 
     def find_itinerary(self):
