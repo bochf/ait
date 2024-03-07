@@ -1,20 +1,41 @@
-import collections
+"""
+This module implement Hierholzer'a algorithm for Eulerian graph traversal
+"""
+
 import logging
 
 from igraph import Graph, Edge
 
-from ait.utils import Arrow, Eulerian, is_eulerian, eulerize
+from ait.utils import Eulerian, is_eulerian, eulerize
 from ait.errors import UnknownState
 
 
 class Hierholzer:
+    """
+    Hierholzer algorithm traversing a directed Eulerian graph
+    """
 
     def __init__(self, graph: Graph):
-        self._matrix = []
-        self._graph: Graph = graph.copy()
-        self._track = []
+        self._graph: Graph = graph
+        self._path = []
 
     def dfs(self, graph: Graph, current: str, incoming_edge: str = ""):
+        """
+        Depth First Search
+        Start from current vertex, choose the first outgoing edge to traverse
+        to the adjacent vertex and delete the edge. Call the dfs method on the
+        new vertex until the vertex has no outgoing edge. Push the edge and
+        the vertex into the stack. Continue the search on the next edge of the
+        predecessor vertex until all no edge left.
+
+        :param graph: the graph to traverse
+        :type graph: Graph
+        :param current: name of current vertex
+        :type current: str
+        :param incoming_edge: the edge points to this vertex
+        :type incoming_edge: str, optional
+        :raises UnknownState: if the vertex does not exist
+        """
         try:
             vertex = graph.vs.find(current)
             logging.debug("Visit vertex %s", current)
@@ -23,7 +44,7 @@ class Hierholzer:
                 if not out_edges:
                     # push the vertex and the incoming edge into the stack when
                     # there is no outgoing edge
-                    self._track.append((current, incoming_edge))
+                    self._path.append((current, incoming_edge))
                     break
 
                 edge = out_edges[0]
@@ -36,31 +57,38 @@ class Hierholzer:
             logging.error("Error %s", exc)
             raise UnknownState from exc
 
-    def travel(self, source: str, self_circle=False):
+    def travel(self, source: str, self_circle=False) -> list[tuple[str, str]]:
+        """
+        Traverse a graph using Hierholzer's algorithm.
+        If the graph is not a Eulerian graph, add edges to make it eulerian.
+
+        :param source: the start point
+        :type source: str
+        :param self_circle: include self circuit or not, defaults to False
+        :type self_circle: bool, optional
+        :return: list of vertex and edge pairs
+        :rtype: list[tuple[str, str]]
+        """
+
         graph = self._graph.copy()
         if not self_circle:
             # delete self circle edge
-            self_circuit = lambda edge: edge.source == edge.target
+            def self_circuit(edge: Edge) -> bool:
+                return edge.source == edge.target
+
             graph.delete_edges(self_circuit)
         if is_eulerian(graph) == Eulerian.NONE:
             eulerize(graph)
 
-        self._track.clear()
+        self._path.clear()
         self.dfs(graph, source)
-        return self._track
+        return self._path
 
-    def find_itinerary(self):
-        def dfs(cur, graph, res):
-            while graph[cur]:  # traversal all edges
-                dfs(graph[cur].pop(), graph, res)  # visit and delete
-            if not graph[cur]:  # push the vertex into the stack
-                res.append(cur)
+    def dump_path(self) -> str:
+        if not self._path:
+            return ""
 
-        # build the graph
-        my_graph = collections.defaultdict(list)
-        for start, end in sorted(self._matrix)[::-1]:
-            my_graph[start].append(end)
-        my_res = []
-        dfs(self._matrix[0][0], my_graph, my_res)
-
-        return my_res[::-1]  # reverse order
+        result = self._path[-1][0]
+        for target, edge in self._path[-2::-1]:
+            result += "--" + edge + "->" + target
+        return result

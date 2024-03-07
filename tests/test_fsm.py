@@ -3,17 +3,10 @@ This moudle test FiniteStateMachine
 """
 
 import logging
+
 from ait.finite_state_machine import FiniteStateMachine
 from ait.utils import Arrow
-
-SAMPLE_DATA = {
-    "A": {"B": {"name": "1"}, "C": {"name": "2"}},
-    "B": {"D": {"name": "3"}},
-    "C": {"D": {"name": "4"}},
-    "D": {"E": {"name": "5"}, "F": {"name": "6"}},
-    "E": {"G": {"name": "7"}},
-    "F": {"G": {"name": "8"}},
-}
+from tests.common import SAMPLE_DATA
 
 
 def verify_fsm(fsm: FiniteStateMachine, nodes: list[str], arrows: list[Arrow]):
@@ -22,7 +15,7 @@ def verify_fsm(fsm: FiniteStateMachine, nodes: list[str], arrows: list[Arrow]):
     assert len(fsm.arcs) == len(arrows)
 
     for name in nodes:
-        assert fsm._has_node(name)
+        assert fsm.has_node(name)
 
     for arc in arrows:
         assert fsm.get_arcs(arc.tail, arc.head, arc.name)

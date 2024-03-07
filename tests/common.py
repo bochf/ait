@@ -13,9 +13,17 @@ from ait.base import Event, State
 from ait.sut import SUT
 
 
+SAMPLE_DATA = {
+    "A": {"B": {"name": "1"}, "C": {"name": "2"}},
+    "B": {"D": {"name": "3"}},
+    "C": {"D": {"name": "4"}},
+    "D": {"E": {"name": "5"}, "F": {"name": "6"}},
+    "E": {"G": {"name": "7"}},
+    "F": {"G": {"name": "8"}},
+}
 class TestState(State):
     """The subclass inherited from State for testing"""
-
+    # pylint: disable=super-init-not-called
     def __init__(self, name: str, value: dict):
         self._name = name
         self._label = name

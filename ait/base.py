@@ -91,7 +91,7 @@ class State(ABC):
 
 class InvalidState(State):
     """Invalid state class"""
-
+    # pylint: disable=super-init-not-called
     def __init__(self):
         """constructor"""
         self._name = "invalid"

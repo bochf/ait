@@ -62,7 +62,7 @@ class FiniteStateMachine:
         """
         return [self._edge_to_arrow(edge) for edge in self._graph.es]
 
-    def _has_node(self, name: str) -> bool:
+    def has_node(self, name: str) -> bool:
         """
         Get a state by name
 
@@ -85,7 +85,7 @@ class FiniteStateMachine:
         :param state: the new state
         :type state: State
         """
-        if self._has_node(name):
+        if self.has_node(name):
             logging.warning("Skip duplicated vertex %s", name)
             return
 
@@ -172,7 +172,7 @@ class FiniteStateMachine:
         :return: list of vertices' name in order
         :rtype: list[str]
         """
-        if not self._has_node(name):
+        if not self.has_node(name):
             logging.error("Invalid state %s", name)
             return []
 

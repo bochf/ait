@@ -1,18 +1,8 @@
 """This module test the utils."""
 
-import logging
-
 from ait.finite_state_machine import FiniteStateMachine
 from ait.utils import Eulerian, is_eulerian, is_connected, eulerize
-
-SAMPLE_DATA = {
-    "A": {"B": {"name": "1"}, "C": {"name": "2"}},
-    "B": {"D": {"name": "3"}},
-    "C": {"D": {"name": "4"}},
-    "D": {"E": {"name": "5"}, "F": {"name": "6"}},
-    "E": {"G": {"name": "7"}},
-    "F": {"G": {"name": "8"}},
-}
+from tests.common import SAMPLE_DATA
 
 
 def test_connectivity():
