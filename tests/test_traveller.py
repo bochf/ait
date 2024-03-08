@@ -1,10 +1,11 @@
 """This module tests Hierholzer's algorithm"""
 
 import logging
+from ait.base import Arrow
 
 from ait.traveller import Hierholzer
 from ait.finite_state_machine import FiniteStateMachine
-from ait.utils import Arrow, eulerize
+from ait.utils import eulerize
 from tests.common import SAMPLE_DATA
 
 

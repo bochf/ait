@@ -8,7 +8,7 @@ from csv import DictWriter, DictReader
 import igraph as ig
 from igraph import Graph, plot
 
-from ait.utils import Arrow
+from ait.base import Arrow
 
 class FiniteStateMachine:
     """

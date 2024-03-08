@@ -76,11 +76,9 @@ def test_eulerize():
     }
     fsm = FiniteStateMachine()
     fsm.load_from_dict(input_data)
-    fsm.export_graph("fsm.svg", (0, 0, 600, 600), margin=100)
 
     # WHEN
     eulerize(fsm.graph)
 
     # THEN
-    assert is_eulerian(fsm.graph) != Eulerian.NONE
-    fsm.export_graph("euler.svg", (0, 0, 600, 600), margin=100)
+    assert is_eulerian(fsm.graph) == Eulerian.CIRCUIT

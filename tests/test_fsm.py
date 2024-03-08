@@ -5,7 +5,7 @@ This moudle test FiniteStateMachine
 import logging
 
 from ait.finite_state_machine import FiniteStateMachine
-from ait.utils import Arrow
+from ait.base import Arrow
 from tests.common import SAMPLE_DATA
 
 

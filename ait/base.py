@@ -156,15 +156,49 @@ class Event(ABC):
 
 
 @dataclass
-class Transition:
+class Arrow:
     """
-    A transition is a tuple of the source state, target state, and the event
-     that triggers the transition. It represents a directed edge in a graph.
+    An arrow is a directed edge in the directed graph with an ordered pair of
+    vertices and an arc connects them. The arrow's direction is from tail to
+    head.
     """
 
-    source: State
-    target: State
-    event: Event
+    tail: str
+    head: str
+    name: str
 
     def __str__(self) -> str:
-        return f"{self.source.name}--{self.event.name}->{self.target.name}"
+        return f"{self.tail}--{self.name}->{self.head}"
+
+    def __eq__(self, other) -> bool:
+        if not isinstance(other, Arrow):
+            return False
+        return (
+            self.tail == other.tail
+            and self.head == other.head
+            and self.name == other.name
+        )
+
+    def __lt__(self, other) -> bool:
+        if not isinstance(other, Arrow):
+            raise ValueError(f"Compare Arrow to {other.__class__}")
+        if self.tail < other.tail:
+            return True
+        if self.tail > other.tail:
+            return False
+
+        # equal tail, compare head
+        if self.head < other.head:
+            return True
+        if self.head > other.head:
+            return False
+
+        # equal tail and head, compare name
+        if self.name < other.name:
+            return True
+        return False
+
+    @property
+    def end_points(self) -> list[str]:
+        """return tail/head pair"""
+        return [self.tail, self.head]

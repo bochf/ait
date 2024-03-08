@@ -6,15 +6,31 @@
   state/event are executed.
 """
 
+from dataclasses import dataclass
 import logging
 
-from ait.base import State, InvalidState, Transition
+from ait.base import Arrow, Event, State, InvalidState
 from ait.sut import SUT
 from ait.errors import UnknownEvent, UnknownState
 from ait.finite_state_machine import FiniteStateMachine
-from ait.utils import Arrow, shortest_path
+from ait.utils import shortest_path
 
 INVALID_STATE = InvalidState()
+
+
+@dataclass
+class Transition:
+    """
+    A transition is a tuple of the source state, target state, and the event
+     that triggers the transition. It represents a directed edge in a graph.
+    """
+
+    source: State
+    target: State
+    event: Event
+
+    def __str__(self) -> str:
+        return f"{self.source.name}--{self.event.name}->{self.target.name}"
 
 
 class StateEngine:

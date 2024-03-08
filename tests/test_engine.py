@@ -62,4 +62,4 @@ def test_engine():
     engine.evolve(init_state)
     fsm = engine.state_machine
     logging.info("matrix=%s", engine.matrix)
-    fsm.export_graph("fsm.svg")
+    fsm.export_graph("logs/fsm.svg")
