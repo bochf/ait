@@ -4,35 +4,35 @@ import logging
 from ait.base import Arrow
 
 from ait.traveller import Hierholzer
-from ait.finite_state_machine import GraphWrapper
+from ait.graph_wrapper import GraphWrapper
 from ait.utils import eulerize
 from tests.common import SAMPLE_DATA
 
 
-def dump_fsm(fsm: GraphWrapper, filename: str):
+def _dump_graph(graph: GraphWrapper, filename: str):
     """
-    Export the finite state machine to a csv matrix and a graph
+    Export data in a directed graph to a csv matrix and a svg file
 
-    :param fsm: the finite state machine
-    :type fsm: FiniteStateMachine
+    :param graph: the state graph
+    :type graph: GraphWrapper
     :param filename: the filename to be used in csv and svg files
     :type filename: str
     """
-    fsm.write_to_csv(f"logs/{filename}.csv")
+    graph.write_to_csv(f"logs/{filename}.csv")
 
     # add label to vertices and edges
     v_labels = {}
-    for vertex in fsm.graph.vs:
+    for vertex in graph.graph.vs:
         name = vertex.attributes()["name"]
         v_labels[name] = {"label": name}
-    fsm.update_node_attr(v_labels)
+    graph.update_node_attr(v_labels)
 
     e_labels = {}
-    for edge in fsm.graph.es:
+    for edge in graph.graph.es:
         name = edge.attributes()["name"]
         e_labels[name] = {"label": name}
-    fsm.update_edge_attr(e_labels)
-    fsm.export_graph(f"logs/{filename}.svg", (0, 0, 500, 500))
+    graph.update_edge_attr(e_labels)
+    graph.export_graph(f"logs/{filename}.svg", (0, 0, 500, 500))
 
 
 def test_euler_path():
@@ -46,19 +46,19 @@ def test_euler_path():
         "E": {"B": {"name": "8"}, "C": {"name": "9"}},
     }
 
-    fsm = GraphWrapper()
-    fsm.load_from_dict(input_data)
-    dump_fsm(fsm, "test_traveller")
+    state_graph = GraphWrapper()
+    state_graph.load_from_dict(input_data)
+    _dump_graph(state_graph, "test_traveller")
 
-    hhz = Hierholzer(fsm.graph)
+    hhz = Hierholzer(state_graph.graph)
 
     # WHEN
     track = hhz.travel("A")
     logging.info(hhz.dump_path())
 
     # THEN
-    eulerize(fsm.graph)  # make the graph Eulerian to compare the result
-    expect_result = fsm.arcs.copy()
+    eulerize(state_graph.graph)  # make the graph Eulerian to compare the result
+    expect_result = state_graph.arcs.copy()
 
     actual_result = []
     source = track[-1][0]

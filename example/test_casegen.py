@@ -28,22 +28,22 @@ def test_arb():
 
     # construct a finite state machine by trying all states and requests
     engine.evolve(MockArbiter.states["no room"])
-    fsm = engine.state_machine
+    state_graph = engine.state_graph
 
     # show the state machine
     state_labels = {name: {"label": name, "size": 60} for name in MockArbiter.states}
-    fsm.update_node_attr(state_labels)
+    state_graph.update_node_attr(state_labels)
     event_labels = {}
     for event_name in MockArbiter.events:
         event_labels[event_name] = {"label": str(len(event_labels))}
-    fsm.update_edge_attr(event_labels)
-    fsm.write_to_csv("logs/arb.csv")
-    fsm.export_graph("logs/arb.svg", show_self_circle=False, margin=150)
+    state_graph.update_edge_attr(event_labels)
+    state_graph.write_to_csv("logs/arb.csv")
+    state_graph.export_graph("logs/arb.svg", show_self_circle=False, margin=150)
 
     # generate test cases
-    eulerize(fsm.graph)
-    fsm.export_graph("logs/euler_arb.svg", show_self_circle=False, margin=150)
-    hhz = Hierholzer(fsm.graph)
+    eulerize(state_graph.graph)
+    state_graph.export_graph("logs/euler_arb.svg", show_self_circle=False, margin=150)
+    hhz = Hierholzer(state_graph.graph)
     path = hhz.travel("no room")
     assert path
     logging.info("path length=%d", len(path))

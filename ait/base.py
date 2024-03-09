@@ -27,34 +27,48 @@ class State(ABC):
     This interface defines properties and methods a State class should provide.
     """
 
-    def __init__(self) -> None:
-        self._name: str
-        self._label: str
-        self._valid: bool
-        self._value: dict
-
+    @abstractmethod
     def __str__(self) -> str:
-        return f"name = {self._name}, label = {self._label}, value = {self._value}"
+        pass
+
+    @abstractmethod
+    def __eq__(self, rhs: object) -> bool:
+        """
+        Compare two states
+
+        :param rhs: the other state to be compared
+        :type rhs: object
+        :return: True if the values are the same
+        :rtype: bool
+        """
+        pass
+
+    @abstractmethod
+    def __ne__(self, __value: object) -> bool:
+        pass
 
     @property
+    @abstractmethod
     def name(self) -> str:
-        """State name used in the graph
+        """
+        The unique state name in the system
 
         :return: the name of the state
         :rtype: str
         """
-        return self._name
 
     @property
-    def label(self) -> str:
-        """State lable used in the graph
+    @abstractmethod
+    def value(self) -> dict:
+        """The value of the state
 
-        :return: the detail of the state
-        :rtype: str
+        :return: a dictionary represents the state
+        :rtype: Dict
         """
-        return self._label
+        pass
 
     @property
+    @abstractmethod
     def is_valid(self) -> bool:
         """The state is valid or not.
         If the target state in a transient is invalid means the API returns error on source state.
@@ -62,45 +76,36 @@ class State(ABC):
         :return: the state is valid or not
         :rtype: bool
         """
-        return self._valid
-
-    @property
-    def value(self) -> dict:
-        """The value of the state
-
-        :return: a dictionary represents the state
-        :rtype: Dict
-        """
-        return self._value
-
-    def __eq__(self, rhs: object) -> bool:
-        """compare two states
-
-        :param rhs: the other state to be compared
-        :type rhs: object
-        :return: True if the values are the same
-        :rtype: bool
-        """
-        if not isinstance(rhs, State):
-            return False
-        return self.value == rhs.value
-
-    def __ne__(self, __value: object) -> bool:
-        return not self.__eq__(__value)
+        pass
 
 
 class InvalidState(State):
     """Invalid state class"""
+
     # pylint: disable=super-init-not-called
     def __init__(self):
         """constructor"""
-        self._name = "invalid"
-        self._label = "invalid"
-        self._valid = False
-        self._value = {}
 
     def __str__(self) -> str:
         return "invalid state"
+
+    def __eq__(self, rhs: object) -> bool:
+        return isinstance(rhs, InvalidState)
+
+    def __ne__(self, __value: object) -> bool:
+        return not self.__eq__(__value)
+
+    @property
+    def name(self) -> str:
+        return "invalid"
+
+    @property
+    def value(self) -> dict:
+        return {"value": "invalid"}
+
+    @property
+    def is_valid(self) -> bool:
+        return False
 
 
 class Event(ABC):

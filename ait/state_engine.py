@@ -12,7 +12,7 @@ import logging
 from ait.base import Arrow, Event, State, InvalidState
 from ait.sut import SUT
 from ait.errors import UnknownEvent, UnknownState
-from ait.finite_state_machine import GraphWrapper
+from ait.graph_wrapper import GraphWrapper
 from ait.utils import shortest_path
 
 INVALID_STATE = InvalidState()
@@ -30,7 +30,18 @@ class Transition:
     event: Event
 
     def __str__(self) -> str:
-        return f"{self.source.name}--{self.event.name}->{self.target.name}"
+        return str(self.arrow)
+
+    @property
+    def arrow(self) -> Arrow:
+        """
+        Extract name of source, target states and the event to construct an
+        arrow object
+
+        :return: the arrow with source, target and event anme
+        :rtype: Arrow
+        """
+        return Arrow(self.source.name, self.target.name, self.event.name)
 
 
 class StateEngine:
@@ -38,7 +49,7 @@ class StateEngine:
 
     def __init__(self, sut: SUT):
         self._matrix = {}
-        self._fsm = GraphWrapper()
+        self._state_graph = GraphWrapper()
 
         self._sut = sut
         self._env = sut.env.copy()
@@ -84,14 +95,14 @@ class StateEngine:
         return self._matrix
 
     @property
-    def state_machine(self) -> GraphWrapper:
+    def state_graph(self) -> GraphWrapper:
         """
         Get state machine
 
-        :return: fsm
-        :rtype: FiniteStateMachine
+        :return: the directed graph of the states and transitions
+        :rtype: GraphWrapper
         """
-        return self._fsm
+        return self._state_graph
 
     def _is_mature_state(self, name: str) -> bool:
         try:
@@ -142,7 +153,7 @@ class StateEngine:
             }
             logging.info("Add new state: %s", state)
 
-            self._fsm.add_node(state.name)
+            self._state_graph.add_node(state.name)
 
     def _get_state(self, state_name: str) -> State:
         """Get a state by name
@@ -170,7 +181,6 @@ class StateEngine:
         self._add_state(transition.target)
 
         source_name = transition.source.name
-        target_name = transition.target.name
         event_name = transition.event.name
         trans = self._matrix[source_name]["transitions"]
         try:
@@ -178,15 +188,15 @@ class StateEngine:
             if not old_state:
                 trans[event_name] = transition.target
                 if transition.source.is_valid and transition.target.is_valid:
-                    # add the transition in fsm if both states are real
-                    self._fsm.add_arc(Arrow(source_name, target_name, event_name))
+                    # add the transition into the state graph if both states are real
+                    self._state_graph.add_arc(transition.arrow)
                 logging.info("Add new transition %s", transition)
                 return
             if old_state != transition.target:
                 logging.error(
                     "ambiguate behavior, get different result %s vs %s when processing %s on %s",
                     old_state.name,
-                    target_name,
+                    transition.target.name,
                     event_name,
                     source_name,
                 )
@@ -296,7 +306,7 @@ class StateEngine:
 
         target = self._find_nearest_immature_state(source)
         if target:
-            path1 = shortest_path(self._fsm.graph, source, target)
+            path1 = shortest_path(self._state_graph.graph, source, target)
         if source != self._init_state.name:
             # try start from initial state
             if not self._is_mature_state(self._init_state.name):
@@ -305,7 +315,9 @@ class StateEngine:
 
             target = self._find_nearest_immature_state(self._init_state.name)
             # there must be an immature state reachable from the initial state
-            path2 = shortest_path(self._fsm.graph, self._init_state.name, target)
+            path2 = shortest_path(
+                self._state_graph.graph, self._init_state.name, target
+            )
 
         if len(path1) <= len(path2):
             # go from current state
@@ -338,7 +350,7 @@ class StateEngine:
                  empty if no immature state is reachable form the source
         :rtype: State
         """
-        for name in self._fsm.bfs(source):
+        for name in self._state_graph.bfs(source):
             if not self._is_mature_state(name):
                 return name
 

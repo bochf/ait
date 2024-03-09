@@ -42,7 +42,7 @@ class GraphWrapper:
     @property
     def nodes(self) -> list[str]:
         """
-        Get all the vertices in the fsm
+        Get all the vertices in the graph
 
         :return: list of vertices name
         :rtype: list[str]
@@ -52,7 +52,7 @@ class GraphWrapper:
     @property
     def arcs(self) -> list[Arrow]:
         """
-        Get all the arrows in the fsm
+        Get all the arrows in the graph
 
         :return: list of arrows
         :rtype: list[Arrow]
@@ -210,12 +210,12 @@ class GraphWrapper:
         data = self._graph.to_dict_dict(use_vids=False, edge_attrs="name")
         return data
 
-    def write_to_csv(self, filename="fsm.csv"):
+    def write_to_csv(self, filename):
         """
         Save the matrix to a csv file
 
         :param filename: the csv filename
-        :type filename: str, optional
+        :type filename: str
         """
         with open(filename, "w", encoding="utf-8", newline="") as csvfile:
             edge_names = set(
@@ -236,7 +236,7 @@ class GraphWrapper:
                         row[key] = ""
                 writer.writerow(row)
 
-    def read_from_csv(self, filename="fsm.csv"):
+    def read_from_csv(self, filename):
         """
         Load the data from a csv file.
         The first line of the csv file is a string list stars with "S_source"
@@ -246,7 +246,7 @@ class GraphWrapper:
         at source state.
 
         :param filename: the csv filename
-        :type filename: str, optional
+        :type filename: str
         """
         with open(filename, "r", encoding="utf-8", newline="") as csvfile:
             reader = DictReader(csvfile)

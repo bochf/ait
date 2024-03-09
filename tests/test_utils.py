@@ -1,6 +1,6 @@
 """This module test the utils."""
 
-from ait.finite_state_machine import GraphWrapper
+from ait.graph_wrapper import GraphWrapper
 from ait.utils import Eulerian, is_eulerian, is_connected, eulerize
 from ait.base import Arrow
 from tests.common import SAMPLE_DATA
@@ -9,61 +9,61 @@ from tests.common import SAMPLE_DATA
 def test_connectivity():
     """test connectivity of a state machine"""
     # GIVEN
-    fsm = GraphWrapper()
+    state_graph = GraphWrapper()
 
     # THEN
-    assert not is_connected(fsm.graph)
+    assert not is_connected(state_graph.graph)
 
     # WHEN
-    fsm.load_from_dict(SAMPLE_DATA)
+    state_graph.load_from_dict(SAMPLE_DATA)
 
     # THEN the graph is connected
-    assert is_connected(fsm.graph)
+    assert is_connected(state_graph.graph)
 
     # WHEN add a new node
-    fsm.add_node("H")
+    state_graph.add_node("H")
 
     # THEN the new node does not connect to any other existing nodes
-    assert not is_connected(fsm.graph)
+    assert not is_connected(state_graph.graph)
 
 
 def test_eulerian():
     """test eulerian of a graph"""
     # GIVEN an empty graph
-    fsm = GraphWrapper()
+    state_graph = GraphWrapper()
 
     # THEN empty graph is not a eulerian graph
-    assert is_eulerian(fsm.graph) == Eulerian.NONE
+    assert is_eulerian(state_graph.graph) == Eulerian.NONE
 
     # WHEN add a node
-    fsm.add_node("A")
+    state_graph.add_node("A")
 
     # THEN the graph is a eulerian graph
-    assert is_eulerian(fsm.graph) == Eulerian.CIRCUIT
+    assert is_eulerian(state_graph.graph) == Eulerian.CIRCUIT
 
     # WHEN add another node
-    fsm.add_node("B")
+    state_graph.add_node("B")
 
     # THEN the graph is still not a eulerian graph be cause 2 nodes are not connected
-    assert is_eulerian(fsm.graph) == Eulerian.NONE
+    assert is_eulerian(state_graph.graph) == Eulerian.NONE
 
     # WHEN connecte the 2 nodes
-    fsm.add_arc(Arrow("A", "B", "INVITE"))
+    state_graph.add_arc(Arrow("A", "B", "INVITE"))
 
     # THEN the graph has a eulerian path A to B
-    assert is_eulerian(fsm.graph) == Eulerian.PATH
+    assert is_eulerian(state_graph.graph) == Eulerian.PATH
 
     # WHN add a backward connection
-    fsm.add_arc(Arrow("B", "A", "OK"))
+    state_graph.add_arc(Arrow("B", "A", "OK"))
 
     # THEN the graph has a eulerian circuit
-    assert is_eulerian(fsm.graph) == Eulerian.CIRCUIT
+    assert is_eulerian(state_graph.graph) == Eulerian.CIRCUIT
 
     # WHEN add a forward edge again
-    fsm.add_arc(Arrow("A", "B", "ACK"))
+    state_graph.add_arc(Arrow("A", "B", "ACK"))
 
     # THEN the graph becomes a semi eulerian graph again
-    assert is_eulerian(fsm.graph) == Eulerian.PATH
+    assert is_eulerian(state_graph.graph) == Eulerian.PATH
 
 
 def test_eulerize():
@@ -75,11 +75,11 @@ def test_eulerize():
         "C": {"D": {"name": "cd"}},
         "D": {"A": {"name": "da"}},
     }
-    fsm = GraphWrapper()
-    fsm.load_from_dict(input_data)
+    state_graph = GraphWrapper()
+    state_graph.load_from_dict(input_data)
 
     # WHEN
-    eulerize(fsm.graph)
+    eulerize(state_graph.graph)
 
     # THEN
-    assert is_eulerian(fsm.graph) == Eulerian.CIRCUIT
+    assert is_eulerian(state_graph.graph) == Eulerian.CIRCUIT

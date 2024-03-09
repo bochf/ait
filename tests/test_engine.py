@@ -60,6 +60,6 @@ def test_engine():
     init_state = test_app.start()
     engine = StateEngine(test_app)
     engine.evolve(init_state)
-    fsm = engine.state_machine
+    state_graph = engine.state_graph
     logging.info("matrix=%s", engine.matrix)
-    fsm.export_graph("logs/fsm.svg")
+    state_graph.export_graph("logs/test_engine.svg")

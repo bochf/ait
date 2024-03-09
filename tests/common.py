@@ -28,7 +28,29 @@ class TestState(State):
         self._name = name
         self._label = name
         self._value = value
-        self._valid = True
+
+    def __str__(self) -> str:
+        return f"name={self.name}, value={self.value}"
+
+    def __eq__(self, rhs: object) -> bool:
+        if not isinstance(rhs, TestState):
+            return False
+        return self.value == rhs.value
+
+    def __ne__(self, __value: object) -> bool:
+        return not self.__eq__(__value)
+
+    @property
+    def name(self) -> str:
+        return self._name
+
+    @property
+    def value(self) -> dict:
+        return self._value
+
+    @property
+    def is_valid(self) -> bool:
+        return True
 
 
 class TestEvent(Event):
