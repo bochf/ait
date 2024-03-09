@@ -68,8 +68,8 @@ class FiniteStateMachine:
 
         :param name: the name of the state
         :type name: str
-        :return: the state object if exists, otherwise None
-        :rtype: State
+        :return: true if exists, otherwise false
+        :rtype: bool
         """
         try:
             self._graph.vs.find(name)
@@ -82,8 +82,8 @@ class FiniteStateMachine:
         Add a state in the graph as a vertex, if a vertex with the same state
         name already exist, do nothing.
 
-        :param state: the new state
-        :type state: State
+        :param name: the name of the node
+        :type state: str
         """
         if self.has_node(name):
             logging.warning("Skip duplicated vertex %s", name)
