@@ -12,10 +12,6 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
 
-class SUT:  # pylint: disable=too-few-public-methods
-    """forward delaration"""
-
-
 class State(ABC):
     """
     Interface of State
@@ -146,7 +142,7 @@ class Event(ABC):
         return self._name
 
     @abstractmethod
-    def fire(self, sut: SUT, args: dict) -> dict:
+    def fire(self, sut: object, args: dict) -> dict:
         """Fire the event on source state with arguments
 
         :param sut: the target system that will receive and process the event
@@ -154,9 +150,8 @@ class Event(ABC):
         :param args: arguments to build a request to the sut, the args might be
                      updated according to the response of the event processing
         :type args: dict
-        :return: target state and the result of the event processing.
-          if the API returns error, the state must be an invalid state
-        :rtype: tuple[State, dict]
+        :return: the result of the event processing.
+        :rtype: dict
         """
 
 
