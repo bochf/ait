@@ -4,12 +4,12 @@ This moudle test FiniteStateMachine
 
 import logging
 
-from ait.finite_state_machine import FiniteStateMachine
+from ait.finite_state_machine import GraphWrapper
 from ait.base import Arrow
 from tests.common import SAMPLE_DATA
 
 
-def verify_fsm(fsm: FiniteStateMachine, nodes: list[str], arrows: list[Arrow]):
+def verify_fsm(fsm: GraphWrapper, nodes: list[str], arrows: list[Arrow]):
     """verify a finite state machine is as expected"""
     assert len(fsm.nodes) == len(nodes)
     assert len(fsm.arcs) == len(arrows)
@@ -18,13 +18,13 @@ def verify_fsm(fsm: FiniteStateMachine, nodes: list[str], arrows: list[Arrow]):
         assert fsm.has_node(name)
 
     for arc in arrows:
-        assert fsm.get_arcs(arc.tail, arc.head, arc.name)
+        assert fsm.get_arcs(arc)
 
 
 def test_add_nodes():
     """test add a new state to a fsm"""
     # GIVEN an empty finite state machine
-    fsm = FiniteStateMachine()
+    fsm = GraphWrapper()
 
     # WHEN add a new state
     fsm.add_node("A")
@@ -48,13 +48,13 @@ def test_add_nodes():
 def test_add_arcs():
     """test add edges"""
     # GIVEN an empty finite state machine
-    fsm = FiniteStateMachine()
+    fsm = GraphWrapper()
     connections = []
 
     # WHEN add a new arc
     conn = Arrow("A", "B", "1")
     connections.append(conn)
-    fsm.add_arc(conn.tail, conn.head, conn.name)
+    fsm.add_arc(conn)
 
     # THEN
     verify_fsm(fsm, ["A", "B"], connections)
@@ -62,7 +62,7 @@ def test_add_arcs():
     # WHEN add another arc
     conn = Arrow("A", "C", "2")
     connections.append(conn)
-    fsm.add_arc(conn.tail, conn.head, conn.name)
+    fsm.add_arc(conn)
 
     # THEN
     verify_fsm(fsm, ["A", "B", "C"], connections)
@@ -74,7 +74,7 @@ def test_load_from_dict():
     input_dict = SAMPLE_DATA.copy()
 
     # WHEN
-    fsm = FiniteStateMachine()
+    fsm = GraphWrapper()
     fsm.load_from_dict(input_dict)
 
     output = fsm.export_to_dict()
@@ -87,14 +87,14 @@ def test_load_from_dict():
 def test_export_to_csv():
     """test export fsm to csv file"""
     # GIVEN
-    fsm = FiniteStateMachine()
+    fsm = GraphWrapper()
     fsm.load_from_dict(SAMPLE_DATA)
 
     # WHEN
     fsm.write_to_csv("logs/test_fsm.csv")
 
     # THEN
-    fsm2 = FiniteStateMachine()
+    fsm2 = GraphWrapper()
     fsm2.read_from_csv("logs/test_fsm.csv")
     output_data = fsm2.export_to_dict()
     assert output_data == SAMPLE_DATA

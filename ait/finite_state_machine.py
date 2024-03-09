@@ -5,26 +5,23 @@ This module defines a finite state machine
 import logging
 from csv import DictWriter, DictReader
 
-import igraph as ig
-from igraph import Graph, plot
+from igraph import Graph, Edge, plot
 
 from ait.base import Arrow
 
-class FiniteStateMachine:
-    """
-    Class of finite state machine (FSM)
-    ===================================
 
-    A finite state machine is consists of a finite number of states and the transitions among the
-    states. Our implementation of the FSM is based on a directed graph, in which each vertex
-    represents a state and each directed edge represents an event that triggers state transition.
+class GraphWrapper:
+    """
+    A wrapper class of igraph.Graph
+    Implements and overrides some helper functions for accessing a directed
+    graph by name.
     """
 
     def __init__(self):
         """constructor"""
         self._graph = Graph(directed=True)
 
-    def _edge_to_arrow(self, edge: ig.Edge) -> Arrow:
+    def _edge_to_arrow(self, edge: Edge) -> Arrow:
         vs = self._graph.vs
         return Arrow(
             vs[edge.source].attributes()["name"],
@@ -92,9 +89,7 @@ class FiniteStateMachine:
         self._graph.add_vertex(name)
         logging.info("Add new vertex %s", name)
 
-    def get_arcs(
-        self, source: str = "", target: str = "", event: str = ""
-    ) -> list[Arrow]:
+    def get_arcs(self, arrow: Arrow) -> list[Arrow]:
         """
         Get all edges start from the source to the target with the event name.
         If source is empty, the edges can start from any state
@@ -112,19 +107,19 @@ class FiniteStateMachine:
         """
         eids = set(range(self._graph.ecount()))  # all the edge ids
 
-        if source:
+        if arrow.tail:
             # filter by all the outgoing edges from the source
             try:
-                vtx = self._graph.vs.find(name=source)
+                vtx = self._graph.vs.find(name=arrow.tail)
                 eids.intersection_update(
                     {edge.index for edge in vtx.incident(mode="out")}
                 )
             except ValueError:
                 return []
-        if target:
+        if arrow.head:
             # filter by all the incoming edges to the target
             try:
-                vtx = self._graph.vs.find(target)
+                vtx = self._graph.vs.find(arrow.head)
                 eids.intersection_update(
                     {edge.index for edge in vtx.incident(mode="in")}
                 )
@@ -136,10 +131,10 @@ class FiniteStateMachine:
         return [
             self._edge_to_arrow(edge)
             for edge in edges
-            if not event or edge.attributes()["name"] == event
+            if not arrow.name or edge.attributes()["name"] == arrow.name
         ]
 
-    def add_arc(self, source: str, target: str, event: str, unique: bool = True):
+    def add_arc(self, arrow: Arrow, unique: bool = True):
         """
         Add a transition from source state to target state when event happens.
         The source and target state are stored in the graph as vertices and the
@@ -154,14 +149,14 @@ class FiniteStateMachine:
         """
         if unique:
             # check the uniqueness of the transition
-            if self.get_arcs(source, target, event):
+            if self.get_arcs(arrow):
                 return
 
-        self.add_node(source)
-        self.add_node(target)
+        self.add_node(arrow.tail)
+        self.add_node(arrow.head)
 
-        self._graph.add_edge(source, target, name=event)
-        logging.info("Add new edge %s--%s->%s", source, event, target)
+        self._graph.add_edge(arrow.tail, arrow.head, name=arrow.name)
+        logging.info("Add new edge %s", arrow)
 
     def bfs(self, name: str) -> list[str]:
         """
@@ -259,7 +254,7 @@ class FiniteStateMachine:
                 source = row.pop("S_source")
                 for edge, target in row.items():
                     if target:
-                        self.add_arc(source, target, edge[2:])
+                        self.add_arc(Arrow(source, target, edge[2:]))
 
     def update_node_attr(self, data: dict[str, dict[str, any]]):
         """

@@ -4,12 +4,12 @@ import logging
 from ait.base import Arrow
 
 from ait.traveller import Hierholzer
-from ait.finite_state_machine import FiniteStateMachine
+from ait.finite_state_machine import GraphWrapper
 from ait.utils import eulerize
 from tests.common import SAMPLE_DATA
 
 
-def dump_fsm(fsm: FiniteStateMachine, filename: str):
+def dump_fsm(fsm: GraphWrapper, filename: str):
     """
     Export the finite state machine to a csv matrix and a graph
 
@@ -46,7 +46,7 @@ def test_euler_path():
         "E": {"B": {"name": "8"}, "C": {"name": "9"}},
     }
 
-    fsm = FiniteStateMachine()
+    fsm = GraphWrapper()
     fsm.load_from_dict(input_data)
     dump_fsm(fsm, "test_traveller")
 

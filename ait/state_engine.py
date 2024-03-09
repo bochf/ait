@@ -12,7 +12,7 @@ import logging
 from ait.base import Arrow, Event, State, InvalidState
 from ait.sut import SUT
 from ait.errors import UnknownEvent, UnknownState
-from ait.finite_state_machine import FiniteStateMachine
+from ait.finite_state_machine import GraphWrapper
 from ait.utils import shortest_path
 
 INVALID_STATE = InvalidState()
@@ -38,7 +38,7 @@ class StateEngine:
 
     def __init__(self, sut: SUT):
         self._matrix = {}
-        self._fsm = FiniteStateMachine()
+        self._fsm = GraphWrapper()
 
         self._sut = sut
         self._env = sut.env.copy()
@@ -84,7 +84,7 @@ class StateEngine:
         return self._matrix
 
     @property
-    def state_machine(self) -> FiniteStateMachine:
+    def state_machine(self) -> GraphWrapper:
         """
         Get state machine
 
@@ -179,7 +179,7 @@ class StateEngine:
                 trans[event_name] = transition.target
                 if transition.source.is_valid and transition.target.is_valid:
                     # add the transition in fsm if both states are real
-                    self._fsm.add_arc(source_name, target_name, event_name)
+                    self._fsm.add_arc(Arrow(source_name, target_name, event_name))
                 logging.info("Add new transition %s", transition)
                 return
             if old_state != transition.target:
