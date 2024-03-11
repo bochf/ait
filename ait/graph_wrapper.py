@@ -290,20 +290,18 @@ class GraphWrapper:
             except KeyError:
                 continue
 
-    def export_graph(
-        self,
-        filename: str = None,
-        bbox: tuple = (0, 0, 1000, 1000),
-        show_self_circle: bool = True,
-        **kwargs,
-    ) -> None:
+    def export_graph(self, filename: str, show_self_circle: bool = True, **kwargs):
         """
-        Generate a plotting of the graph data and save in a file using given layout
-        :param filename: the file to store the plotting, support svg, png, pdf
-        :param layout: the layout algorithm
+        Generate a plotting of the graph data and save in a file
+
+
+        :param filename: the output file name, support svg, pdf
+        :type filename: str
+        :param show_self_circle: show self circle in the graph or not, defaults to True
+        :type show_self_circle: bool, optional
         """
         if show_self_circle:
-            plot(self._graph, target=filename, bbox=bbox, **kwargs)
+            plot(self._graph, target=filename, **kwargs)
         else:
             g = self._graph.copy()
             g.delete_edges([edge.index for edge in g.es if edge.source == edge.target])

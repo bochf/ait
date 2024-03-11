@@ -21,8 +21,11 @@ SAMPLE_DATA = {
     "E": {"G": {"name": "7"}},
     "F": {"G": {"name": "8"}},
 }
+
+
 class TestState(State):
     """The subclass inherited from State for testing"""
+
     # pylint: disable=super-init-not-called
     def __init__(self, name: str, value: dict):
         self._name = name
@@ -55,6 +58,13 @@ class TestState(State):
 
 class TestEvent(Event):
     """The subclass inherited from Event for testing"""
+
+    def __init__(self, event_name: str):
+        self._name = event_name
+
+    @property
+    def name(self) -> str:
+        return self._name
 
     def _build_request(self, args: dict) -> dict:
         """

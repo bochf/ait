@@ -24,24 +24,26 @@ class State(ABC):
     """
 
     @abstractmethod
-    def __str__(self) -> str:
-        pass
-
-    @abstractmethod
-    def __eq__(self, rhs: object) -> bool:
+    def __eq__(self, __value: object) -> bool:
         """
         Compare two states
 
-        :param rhs: the other state to be compared
-        :type rhs: object
+        :param __value: the other state to be compared
+        :type __value: object
         :return: True if the values are the same
         :rtype: bool
         """
-        pass
 
     @abstractmethod
     def __ne__(self, __value: object) -> bool:
-        pass
+        """
+        Compare two states are different
+
+        :param __value: the other state to be compared
+        :type __value: object
+        :return: Tue if the values are different
+        :rtype: bool
+        """
 
     @property
     @abstractmethod
@@ -61,32 +63,27 @@ class State(ABC):
         :return: a dictionary represents the state
         :rtype: Dict
         """
-        pass
 
     @property
     @abstractmethod
     def is_valid(self) -> bool:
-        """The state is valid or not.
+        """
+        The state is valid or not.
         If the target state in a transient is invalid means the API returns error on source state.
 
         :return: the state is valid or not
         :rtype: bool
         """
-        pass
 
 
 class InvalidState(State):
     """Invalid state class"""
 
-    # pylint: disable=super-init-not-called
-    def __init__(self):
-        """constructor"""
-
     def __str__(self) -> str:
         return "invalid state"
 
-    def __eq__(self, rhs: object) -> bool:
-        return isinstance(rhs, InvalidState)
+    def __eq__(self, __value: object) -> bool:
+        return isinstance(__value, InvalidState)
 
     def __ne__(self, __value: object) -> bool:
         return not self.__eq__(__value)
@@ -113,14 +110,6 @@ class Event(ABC):
     name. The events can be fired to the SUT and get a result back.
     """
 
-    def __init__(self, name: str):
-        """constructor
-
-        :param name: name of the event
-        :type name: str
-        """
-        self._name = name
-
     @abstractmethod
     def _build_request(self, args: dict) -> dict:
         """
@@ -133,13 +122,14 @@ class Event(ABC):
         """
 
     @property
+    @abstractmethod
     def name(self) -> str:
-        """name of the event
+        """
+        The unique name of the event
 
         :return: the name of the event
         :rtype: str
         """
-        return self._name
 
     @abstractmethod
     def fire(self, sut: object, args: dict) -> dict:

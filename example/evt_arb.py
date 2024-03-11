@@ -6,6 +6,14 @@ from ait.sut import SUT
 
 class ArbiterEvent(Event):
     """class ArbiterEvent"""
+
+    def __init__(self, event_name: str):
+        self._name = event_name
+
+    @property
+    def name(self) -> str:
+        return self._name
+
     def fire(self, sut: SUT, args: dict) -> dict:
         """
         event fire, send request to the sut
@@ -22,6 +30,7 @@ class ArbiterEvent(Event):
 
 class CreateRoom(ArbiterEvent):
     """createRoom event"""
+
     def __init__(self):
         super().__init__("createRoom")
 
@@ -48,6 +57,7 @@ class CreateRoom(ArbiterEvent):
 
 class InviteUser(ArbiterEvent):
     """inviteUser event"""
+
     def __init__(self):
         super().__init__("inviteUser")
 
@@ -75,6 +85,7 @@ class InviteUser(ArbiterEvent):
 
 class Accept(ArbiterEvent):
     """acknowledge event with action type accept"""
+
     def __init__(self):
         super().__init__("accept")
 
@@ -101,6 +112,7 @@ class Accept(ArbiterEvent):
 
 class Decline(ArbiterEvent):
     """acknowledge event with action type decline"""
+
     def __init__(self):
         super().__init__("decline")
 
@@ -127,6 +139,7 @@ class Decline(ArbiterEvent):
 
 class RemoveUser(ArbiterEvent):
     """removeUser event"""
+
     def __init__(self):
         super().__init__("removeUser")
 
@@ -153,6 +166,7 @@ class RemoveUser(ArbiterEvent):
 
 class Content(ArbiterEvent):
     """content event"""
+
     def __init__(self):
         super().__init__("content")
 
@@ -180,6 +194,7 @@ class Content(ArbiterEvent):
 
 class Logoff(ArbiterEvent):
     """userLogoff event"""
+
     def __init__(self):
         super().__init__("logoff")
 
