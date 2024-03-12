@@ -4,6 +4,7 @@ import logging
 from ait.graph_wrapper import Arrow
 
 from ait.strategy.edge_cover import EdgeCover
+from ait.strategy.node_cover import NodeCover
 from ait.graph_wrapper import GraphWrapper
 from ait.strategy.edge_cover import eulerize
 
@@ -34,8 +35,8 @@ def _dump_graph(graph: GraphWrapper, filename: str):
     graph.export_graph(f"logs/{filename}.svg", (0, 0, 500, 500))
 
 
-def test_euler_path():
-    """Test  Hierholzer's algorithm"""
+def test_edge_coverage():
+    """Test  EdgeCover strategy"""
     # GIVEN
     input_data = {
         "A": {"B": {"name": "1"}, "E": {"name": "2"}},
@@ -70,3 +71,24 @@ def test_euler_path():
     actual_result.sort()
     for i in range(len(actual_result)):
         assert expect_result[i] == actual_result[i]
+
+
+def test_node_coverage():
+    """Test  NodeCover strategy"""
+    # GIVEN
+    input_data = {
+        "A": {"B": {"name": "1"}, "E": {"name": "2"}},
+        "B": {"C": {"name": "3"}},
+        "C": {"A": {"name": "4"}, "D": {"name": "5"}},
+        "D": {"A": {"name": "6"}, "C": {"name": "7"}},
+        "E": {"B": {"name": "8"}, "C": {"name": "9"}},
+    }
+
+    state_graph = GraphWrapper()
+    state_graph.load_from_dict(input_data)
+    _dump_graph(state_graph, "test_traveller")
+
+    stg = NodeCover()
+
+    # WHEN
+    stg.travel(state_graph, "A")
