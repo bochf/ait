@@ -9,8 +9,8 @@ This module defines the target system for testing
 
 import logging
 
-from ait.base import Event, State
-from ait.base import SUT
+from ait.interface import Event, State
+from ait.interface import SUT
 
 
 SAMPLE_DATA = {

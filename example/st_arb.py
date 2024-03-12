@@ -1,6 +1,6 @@
 """States of Arbiters"""
 
-from ait.base import State
+from ait.interface import State
 
 
 class ArbiterState(State):

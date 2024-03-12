@@ -2,8 +2,8 @@
 
 import logging
 
-from ait.base import SUT
-from ait.base import State, Event
+from ait.interface import SUT
+from ait.interface import State, Event
 from .evt_arb import (
     CreateRoom,
     InviteUser,
