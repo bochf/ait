@@ -1,15 +1,14 @@
 """
-This module defines the basic data structurs of the finite state machine
+This module defines the interfaces of the finite state machine
   
 .. code-block:: python
   
     class State
     class Event
-    class Transition
+    class SUT
 """
 
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
 
 
 class State(ABC):
@@ -145,50 +144,60 @@ class Event(ABC):
         """
 
 
-@dataclass
-class Arrow:
+class SUT(ABC):
     """
-    An arrow is a directed edge in the directed graph with an ordered pair of
-    vertices and an arc connects them. The arrow's direction is from tail to
-    head.
+    System/Service Under Test
+    =========================
+
+    The SUT is the system/service/application to be tested. It should provide
+    a set of APIs to be executed by the testing program as well as a set of
+    visible states.
     """
 
-    tail: str
-    head: str
-    name: str
+    def __init__(self, options: dict):
+        """
+        constructor
 
-    def __str__(self) -> str:
-        return f"{self.tail}--{self.name}->{self.head}"
-
-    def __eq__(self, other) -> bool:
-        if not isinstance(other, Arrow):
-            return False
-        return (
-            self.tail == other.tail
-            and self.head == other.head
-            and self.name == other.name
-        )
-
-    def __lt__(self, other) -> bool:
-        if not isinstance(other, Arrow):
-            raise ValueError(f"Compare Arrow to {other.__class__}")
-        if self.tail < other.tail:
-            return True
-        if self.tail > other.tail:
-            return False
-
-        # equal tail, compare head
-        if self.head < other.head:
-            return True
-        if self.head > other.head:
-            return False
-
-        # equal tail and head, compare name
-        if self.name < other.name:
-            return True
-        return False
+        :param options: name/value pairs to setup the system
+        :type options: dict
+        """
+        self._options = options
 
     @property
-    def end_points(self) -> list[str]:
-        """return tail/head pair"""
-        return [self.tail, self.head]
+    def env(self) -> dict:
+        """The environment and configuration variables of the system"""
+        return self._options
+
+    @abstractmethod
+    def start(self) -> State:
+        """
+        Initialize the system.
+
+        :return: the initial state
+        :rtype: State
+        """
+
+    @abstractmethod
+    def reset(self):
+        """reset the system to the initial state"""
+
+    @property
+    @abstractmethod
+    def state(self) -> State:
+        """The current state of the system"""
+
+    @property
+    @abstractmethod
+    def event_list(self) -> dict[str, Event]:
+        """The dictionary of event name and the event"""
+
+    @abstractmethod
+    def process_request(self, request: dict) -> dict:
+        """
+        Process an request
+
+        :param request: the request received
+        :type dict: dict
+        :return: result of the request processing
+        :rtype: dict
+        """

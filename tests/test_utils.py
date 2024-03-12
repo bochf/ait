@@ -1,8 +1,9 @@
 """This module test the utils."""
 
 from ait.graph_wrapper import GraphWrapper
-from ait.utils import Eulerian, is_eulerian, is_connected, eulerize
-from ait.base import Arrow
+from ait.strategy.edge_cover import Eulerian, eulerize, is_eulerian
+from ait.graph_wrapper import is_connected
+from ait.graph_wrapper import Arrow
 from tests.common import SAMPLE_DATA
 
 

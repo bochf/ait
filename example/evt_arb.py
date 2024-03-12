@@ -1,7 +1,7 @@
 """Events of Arbiters"""
 
 from ait.base import Event
-from ait.sut import SUT
+from ait.base import SUT
 
 
 class ArbiterEvent(Event):

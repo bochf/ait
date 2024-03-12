@@ -1,12 +1,11 @@
 """This module tests Hierholzer's algorithm"""
 
 import logging
-from ait.base import Arrow
+from ait.graph_wrapper import Arrow
 
-from ait.traveller import Hierholzer
+from ait.strategy.edge_cover import EdgeCover
 from ait.graph_wrapper import GraphWrapper
-from ait.utils import eulerize
-from tests.common import SAMPLE_DATA
+from ait.strategy.edge_cover import eulerize
 
 
 def _dump_graph(graph: GraphWrapper, filename: str):
@@ -50,10 +49,10 @@ def test_euler_path():
     state_graph.load_from_dict(input_data)
     _dump_graph(state_graph, "test_traveller")
 
-    hhz = Hierholzer(state_graph.graph)
+    hhz = EdgeCover()
 
     # WHEN
-    track = hhz.travel("A")
+    track = hhz.travel(state_graph, "A")
     logging.info(hhz.dump_path())
 
     # THEN

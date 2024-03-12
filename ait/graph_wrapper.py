@@ -2,12 +2,60 @@
 This module defines a finite state machine
 """
 
+from dataclasses import dataclass
 import logging
 from csv import DictWriter, DictReader
 
 from igraph import Graph, Edge, plot
 
-from ait.base import Arrow
+
+@dataclass
+class Arrow:
+    """
+    An arrow is a directed edge in the directed graph with an ordered pair of
+    vertices and an arc connects them. The arrow's direction is from tail to
+    head.
+    """
+
+    tail: str
+    head: str
+    name: str
+
+    def __str__(self) -> str:
+        return f"{self.tail}--{self.name}->{self.head}"
+
+    def __eq__(self, other) -> bool:
+        if not isinstance(other, Arrow):
+            return False
+        return (
+            self.tail == other.tail
+            and self.head == other.head
+            and self.name == other.name
+        )
+
+    def __lt__(self, other) -> bool:
+        if not isinstance(other, Arrow):
+            raise ValueError(f"Compare Arrow to {other.__class__}")
+        if self.tail < other.tail:
+            return True
+        if self.tail > other.tail:
+            return False
+
+        # equal tail, compare head
+        if self.head < other.head:
+            return True
+        if self.head > other.head:
+            return False
+
+        # equal tail and head, compare name
+        if self.name < other.name:
+            return True
+        return False
+
+    @property
+    def end_points(self) -> list[str]:
+        """return tail/head pair"""
+        return [self.tail, self.head]
 
 
 class GraphWrapper:
@@ -305,4 +353,15 @@ class GraphWrapper:
         else:
             g = self._graph.copy()
             g.delete_edges([edge.index for edge in g.es if edge.source == edge.target])
-            plot(g, target=filename, bbox=bbox, **kwargs)
+            plot(g, target=filename, **kwargs)
+
+
+def is_connected(graph: Graph) -> bool:
+    """
+    Check all the vertices are connected. If the graph is weak connected
+    return true, we don't need bidirection connected.
+
+    :return: true if the graph is connected
+    :rtype: bool
+    """
+    return graph.is_connected(mode="weak")

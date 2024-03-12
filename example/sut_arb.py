@@ -2,7 +2,7 @@
 
 import logging
 
-from ait.sut import SUT
+from ait.base import SUT
 from ait.base import State, Event
 from .evt_arb import (
     CreateRoom,

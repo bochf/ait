@@ -9,10 +9,10 @@
 from dataclasses import dataclass
 import logging
 
-from ait.base import Arrow, Event, State, InvalidState
-from ait.sut import SUT
+from ait.base import Event, State, InvalidState
+from ait.base import SUT
 from ait.errors import UnknownEvent, UnknownState
-from ait.graph_wrapper import GraphWrapper
+from ait.graph_wrapper import Arrow, GraphWrapper
 from ait.utils import shortest_path
 
 INVALID_STATE = InvalidState()

@@ -5,8 +5,8 @@ Automatically generate integration test cases for Arbiter
 import logging
 
 from ait.state_engine import StateEngine
-from ait.utils import eulerize
-from ait.traveller import Hierholzer
+from ait.strategy.edge_cover import eulerize
+from ait.strategy.edge_cover import EdgeCover
 from example.sut_arb import MockArbiter
 
 
@@ -43,8 +43,8 @@ def test_arb():
     # generate test cases
     eulerize(state_graph.graph)
     state_graph.export_graph("logs/euler_arb.svg", show_self_circle=False, margin=150)
-    hhz = Hierholzer(state_graph.graph)
-    path = hhz.travel("no room")
+    hhz = EdgeCover()
+    path = hhz.travel(state_graph, "no room")
     assert path
     logging.info("path length=%d", len(path))
 
