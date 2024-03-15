@@ -13,6 +13,8 @@ class NodeCover(Strategy):
     def __init__(self):
         self._paths: list[list[Arrow]] = []
 
+    def dfs(self, graph: Graph, source: str):
+        visited: set[str] = {str} # visited vertices list
     def travel(self, graph_wrapper: GraphWrapper, start: str):
         """
         depth first search on a graph, start from the initial vertex of the
