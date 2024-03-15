@@ -1,6 +1,7 @@
 """This module tests Hierholzer's algorithm"""
 
 import logging
+from igraph import Graph
 from ait.graph_wrapper import Arrow
 
 from ait.strategy.edge_cover import EdgeCover
@@ -73,22 +74,37 @@ def test_edge_coverage():
         assert expect_result[i] == actual_result[i]
 
 
+def get_min_in_degree_vertex(g: Graph) -> int:
+    degree = g.vs[0].degree(mode="in")
+    lowest = 0
+    for i in range(1, len(g.vs)):
+        tmp = g.vs[i].degree(mode="in")
+        if tmp == 0:
+            return i
+        if tmp < degree:
+            degree = tmp
+            lowest = i
+    return lowest
+
+
 def test_node_coverage():
     """Test  NodeCover strategy"""
     # GIVEN
-    input_data = {
-        "A": {"B": {"name": "1"}, "E": {"name": "2"}},
-        "B": {"C": {"name": "3"}},
-        "C": {"A": {"name": "4"}, "D": {"name": "5"}},
-        "D": {"A": {"name": "6"}, "C": {"name": "7"}},
-        "E": {"B": {"name": "8"}, "C": {"name": "9"}},
-    }
-
     state_graph = GraphWrapper()
-    state_graph.load_from_dict(input_data)
+    state_graph._graph = Graph.Erdos_Renyi(10, m=16, directed=True)
+    state_graph._graph.vs["name"] = [
+        "S_" + str(i) for i in range(len(state_graph._graph.vs))
+    ]
+    state_graph._graph.vs["label"] = [
+        "S_" + str(i) for i in range(len(state_graph._graph.vs))
+    ]
+    state_graph._graph.es["name"] = [
+        "E_" + str(i) for i in range(len(state_graph._graph.es))
+    ]
     _dump_graph(state_graph, "test_traveller")
 
     stg = NodeCover()
 
     # WHEN
-    stg.travel(state_graph, "A")
+    stg.travel(state_graph, get_min_in_degree_vertex(state_graph.graph))
+    logging.info("all paths: \n%s", stg.dump_path())

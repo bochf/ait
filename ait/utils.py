@@ -38,3 +38,21 @@ def shortest_path(graph: Graph, source: str, target: str) -> list[Arrow]:
         )
 
     return result
+
+
+def dump_path(path: list[Arrow]) -> str:
+    """
+    Convert a list of arrows to human readable string
+
+    :param path: the path
+    :type path: list[Arrow]
+    :return: string like A--1->B--2->C...
+    :rtype: str
+    """
+    if not path:
+        return ""
+
+    result = path[0].tail
+    for arrow in path:
+        result += "--" + arrow.name + "->" + arrow.head
+    return result
