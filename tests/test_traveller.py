@@ -91,7 +91,10 @@ def test_node_coverage():
     """Test  NodeCover strategy"""
     # GIVEN
     state_graph = GraphWrapper()
-    state_graph._graph = Graph.Erdos_Renyi(10, m=16, directed=True)
+    while True:
+        state_graph._graph = Graph.Erdos_Renyi(10, m=16, directed=True)
+        if state_graph._graph.is_connected(mode="weak"):
+            break
     state_graph._graph.vs["name"] = [
         "S_" + str(i) for i in range(len(state_graph._graph.vs))
     ]
@@ -103,8 +106,8 @@ def test_node_coverage():
     ]
     _dump_graph(state_graph, "test_traveller")
 
-    stg = NodeCover()
+    stg = NodeCover(state_graph)
 
     # WHEN
-    stg.travel(state_graph, get_min_in_degree_vertex(state_graph.graph))
+    stg.travel(get_min_in_degree_vertex(state_graph.graph))
     logging.info("all paths: \n%s", stg.dump_path())

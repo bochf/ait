@@ -67,7 +67,7 @@ class GraphWrapper:
 
     def __init__(self):
         """constructor"""
-        self._graph = Graph(directed=True)
+        self._graph: Graph = Graph(directed=True)
 
     def _edge_to_arrow(self, edge: Edge) -> Arrow:
         vs = self._graph.vs
