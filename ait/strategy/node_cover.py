@@ -47,18 +47,21 @@ def _max_subset(
 
 
 class CandidatePath:
-    def __init__(self, vid: int):
+
+    def __init__(
+        self, vid: int = -1, coverage: int = 0, index: int = 0, length: int = 0
+    ):
         self._vid = vid
-        self._coverage = 0
-        self._index = -1
-        self._len = 0
+        self._coverage = coverage
+        self._index = index
+        self._len = length
 
     def __len__(self):
         return self._len
 
     def __gt__(self, other) -> bool:
         if not isinstance(other, CandidatePath):
-            raise RuntimeError("Invalid object in comparison %s", other)
+            return True
 
         if self.valid and other.valid:
             if self.coverage == other.coverage:
@@ -83,23 +86,30 @@ class CandidatePath:
     def valid(self) -> bool:
         return self._index >= 0
 
-    def build(self, universal_set: set[int], subsets: list[list[int]]):
-        total = len(universal_set)
-        if total == 0:
-            logging.warning("No unvisited vertex")
-            return
 
-        if not subsets:
-            logging.warning("No candidate path")
-            return
-        for i in range(len(subsets)):
-            covered = len(universal_set.intersection(set(subsets[i])))
-            if self._coverage < covered:
-                self._index = i
-                self._coverage = covered
-                self._len = len(subsets[i])
-            if covered == total:
-                return
+def _elect(universal_set: set[int], subsets: list[list[int]]) -> CandidatePath:
+    total = len(universal_set)
+    if total == 0:
+        logging.warning("No unvisited vertex")
+        return CandidatePath()
+
+    logging.debug("unvisited vertices: %s", universal_set)
+    logging.debug("subsets: %s", subsets)
+    if not subsets:
+        return CandidatePath()
+
+    index = 0
+    coverage = 0
+    length = 0
+    for i in range(len(subsets)):
+        covered = len(universal_set.intersection(set(subsets[i])))
+        if coverage < covered:
+            index = i
+            coverage = covered
+            length = len(subsets[i])
+        if covered == total:
+            break
+    return CandidatePath(subsets[index][0], coverage, index, length)
 
 
 class NodeCover(Strategy):
@@ -127,44 +137,6 @@ class NodeCover(Strategy):
             self._simple_paths_cache[vid] = paths
 
         return self._simple_paths_cache[vid]
-
-    def _save_path(self, vertices: list[int]):
-        """
-        Convert vertex sequence to a list of Arrows and save in self._paths
-
-        :param vertices: vertex sequence of simple path
-        :type vertices: list[int]
-        """
-        if len(vertices) < 2:
-            logging.warning("No enough vertices: %s", vertices)
-            return
-
-        logging.debug(
-            "the longest simple path from %s: %s, unvisited vertices: %s",
-            vertices[0],
-            vertices,
-            self._unvisited_vids,
-        )
-        self._paths.append([])  # add a new row
-        for i in range(len(vertices) - 1):
-            source = vertices[i]
-            target = vertices[i + 1]
-            edges = self._graph.es.select(_between=[[source], [target]])
-            if not edges:
-                logging.error("No edge from %s to %s", source, target)
-                return
-            self._paths[-1].append(
-                Arrow(
-                    self._graph.vs[source].attributes()["name"],
-                    self._graph.vs[target].attributes()["name"],
-                    edges[0].attributes()["name"],
-                )
-            )
-
-            if len(edges) > 1:
-                # more than 1 connection between the nodes, delete the used
-                # one to avoid duplicate path
-                self._graph.delete_edges(edges[0].index)
 
     def _update_path(self, path: list[int]):
         if len(path) < 2:
@@ -198,12 +170,13 @@ class NodeCover(Strategy):
                 self._graph.delete_edges(edges[0].index)
 
     def _choose_path(self, start_vid, current_vid) -> list[int]:
-        candidate1 = CandidatePath(start_vid)
-        candidate2 = CandidatePath(current_vid)
-        candidate1.build(self._unvisited_vids, self._get_simple_paths(start_vid))
+        candidate1 = _elect(self._unvisited_vids, self._get_simple_paths(start_vid))
+        candidate2 = CandidatePath()
 
         if start_vid != current_vid:
-            candidate2.build(self._unvisited_vids, self._get_simple_paths(current_vid))
+            candidate2 = _elect(
+                self._unvisited_vids, self._get_simple_paths(current_vid)
+            )
 
         if not (candidate1.valid or candidate2.valid):
             # neight candicate is valid
@@ -218,8 +191,8 @@ class NodeCover(Strategy):
         if candidate1 > candidate2:
             winner = candidate1
 
-        path = self._get_simple_paths(winner.index).pop()
-        self._unvisited_vids -= path
+        path = self._get_simple_paths(winner.vid).pop()
+        self._update_path(path)
 
     def travel(self, start: Union[str, int]):
         """
@@ -237,7 +210,7 @@ class NodeCover(Strategy):
         # get the longest simple path from the start point
         path = start_simple_paths.pop(-1)
         self._unvisited_vids -= set(path)
-        self._save_path(path)
+        self._update_path(path)
 
         while self._unvisited_vids and path:
             left = len(self._unvisited_vids)
@@ -253,8 +226,6 @@ class NodeCover(Strategy):
                     self._unvisited_vids,
                 )
                 return
-
-            self._save_path(path)
 
     def dump_path(self) -> str:
         if not self._paths:

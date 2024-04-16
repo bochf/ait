@@ -51,11 +51,11 @@ def test_edge_coverage():
     state_graph.load_from_dict(input_data)
     _dump_graph(state_graph, "test_traveller")
 
-    hhz = EdgeCover()
+    stg = EdgeCover()
 
     # WHEN
-    track = hhz.travel(state_graph, "A")
-    logging.info(hhz.dump_path())
+    track = stg.travel(state_graph, "A")
+    logging.info(stg.dump_path())
 
     # THEN
     eulerize(state_graph.graph)  # make the graph Eulerian to compare the result
@@ -70,11 +70,19 @@ def test_edge_coverage():
     assert len(expect_result) == len(actual_result)
     expect_result.sort()
     actual_result.sort()
-    for i in range(len(actual_result)):
-        assert expect_result[i] == actual_result[i]
+    for elem in list(zip(expect_result, actual_result)):
+        assert elem[0] == elem[1]
 
 
-def get_min_in_degree_vertex(g: Graph) -> int:
+def get_least_in_degree_vertex(g: Graph) -> int:
+    """
+    Get the vertex with the least in-degree
+
+    :param g: the graph
+    :type g: Graph
+    :return: vertex index
+    :rtype: int
+    """
     degree = g.vs[0].degree(mode="in")
     lowest = 0
     for i in range(1, len(g.vs)):
@@ -109,5 +117,5 @@ def test_node_coverage():
     stg = NodeCover(state_graph)
 
     # WHEN
-    stg.travel(get_min_in_degree_vertex(state_graph.graph))
+    stg.travel(get_least_in_degree_vertex(state_graph.graph))
     logging.info("all paths: \n%s", stg.dump_path())

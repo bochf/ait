@@ -1,5 +1,8 @@
 """
-This module implement Hierholzer'a algorithm for Eulerian graph traversal
+This module implement an Eular walk of a connected directed graph based on the
+Hierholzer'a algorithm. If the graph is not an Eularian graph, repeat some 
+existing edges to make it Eularian, i.e. allow walking through some edges more
+than once.
 """
 
 from enum import Enum
