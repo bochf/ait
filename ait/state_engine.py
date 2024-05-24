@@ -6,42 +6,13 @@
   state/event are executed.
 """
 
-from dataclasses import dataclass
 import logging
 
-from ait.interface import Event, State, InvalidState
+from ait.interface import State, Transition
 from ait.interface import SUT
 from ait.errors import UnknownEvent, UnknownState
 from ait.graph_wrapper import Arrow, GraphWrapper
 from ait.utils import shortest_path
-
-INVALID_STATE = InvalidState()
-
-
-@dataclass
-class Transition:
-    """
-    A transition is a tuple of the source state, target state, and the event
-     that triggers the transition. It represents a directed edge in a graph.
-    """
-
-    source: State
-    target: State
-    event: Event
-
-    def __str__(self) -> str:
-        return str(self.arrow)
-
-    @property
-    def arrow(self) -> Arrow:
-        """
-        Extract name of source, target states and the event to construct an
-        arrow object
-
-        :return: the arrow with source, target and event anme
-        :rtype: Arrow
-        """
-        return Arrow(self.source.name, self.target.name, self.event.name)
 
 
 class StateEngine:
@@ -72,9 +43,15 @@ class StateEngine:
     def matrix(self) -> dict[str, dict[str, State | dict[str, State]]]:
         """
         The matrix of the state machine
-        The matrix is a dictionary where the keys are state names and the
-        values are dictionaries containing event names and their corresponding
-        target states. For example
+        The matrix is a M*N dictionary where M is the number of states, N is
+        the number of events.
+        Each row represents the results of different events on one source state,
+        and each column represents the results of one event on different states.
+        The result is a tuple of the target state and the expected output when
+        an event happens in a source state.
+        The row is indexed by the name of source state, and the column is
+        indexed by the name of the event.
+        For example
 
         .. code-block:: python
 
@@ -82,14 +59,18 @@ class StateEngine:
                 'init_state': {
                     "source": state0,
                     "transitions": {
-                        "event_name1": state1,
-                        "event_name2": state2,
+                        "event_name1": (state1, output1),
+                        "event_name2": (state2, output2),
                         ...
                     }
                 },
                 ...
             }
 
+        The 4-tuple of source state, event, target state and output consist a
+        transition of the finite state machine.based on the finite, determined
+        matrix of transition, we are able to generate test cases for the target
+        SUT.
         """
 
         return self._matrix
@@ -142,9 +123,6 @@ class StateEngine:
         :param new_state: the new state
         :type new_state: State
         """
-        if not state.is_valid:
-            return
-
         if not self._get_state(state.name):
             transitions = {name: None for name in self._sut.event_list}
             self._matrix[state.name] = {
@@ -184,25 +162,25 @@ class StateEngine:
         event_name = transition.event.name
         trans = self._matrix[source_name]["transitions"]
         try:
-            old_state = trans[event_name]
-            if not old_state:
-                trans[event_name] = transition.target
-                if transition.source.is_valid and transition.target.is_valid:
+            exist_result = trans[event_name]
+            if not exist_result:
+                trans[event_name] = (transition.target, transition.output)
+                if transition.is_valid:
                     # add the transition into the state graph if both states are real
                     self._state_graph.add_arc(transition.arrow)
                 logging.info("Add new transition %s", transition)
                 return
-            if old_state != transition.target:
+            if exist_result[0] != transition.target:
                 logging.error(
                     "ambiguate behavior, get different result %s vs %s when processing %s on %s",
-                    old_state.name,
+                    exist_result.name,
                     transition.target.name,
                     event_name,
                     source_name,
                 )
                 raise RuntimeError(
                     f"ambiguate behavior: {event_name} on {source_name}"
-                    f", target state {old_state} vs {transition.target}"
+                    f", target state {exist_result} vs {transition.target}"
                 )
         except KeyError as exc:
             raise UnknownEvent(f"Invalid event {event_name}") from exc
@@ -236,32 +214,25 @@ class StateEngine:
 
         for event in self._sut.event_list.values():
             try:
-                target_state = self._matrix[current_state.name]["transitions"][
-                    event.name
-                ]
-                if target_state:
+                if self._matrix[current_state.name]["transitions"][event.name]:
                     # the event on current state has been exercised, skip it
                     continue
 
-                response = event.fire(self._sut, self._env)
-                if "error" in response:
-                    # an error is returned while processing the event on current state
-                    self._set_transition(
-                        Transition(current_state, INVALID_STATE, event)
+                output = event.fire(self._sut, self._env)
+                target_state = self._sut.state
+                self._set_transition(
+                    Transition(current_state, target_state, event, output)
+                )
+                if current_state != target_state:
+                    # the target system goes to a new state by the event
+                    # explore the transitions on the next state
+                    logging.debug(
+                        "State changed to %s when running %s on %s",
+                        target_state.name,
+                        event.name,
+                        current_state.name,
                     )
-                else:
-                    target_state = self._sut.state
-                    self._set_transition(Transition(current_state, target_state, event))
-                    if current_state != target_state:
-                        # the target system goes to a new state by the event
-                        # explore the transitions on the next state
-                        logging.debug(
-                            "State changed to %s when running %s on %s",
-                            target_state.name,
-                            event.name,
-                            current_state.name,
-                        )
-                        return self._explore(target_state)
+                    return self._explore(target_state)
             except KeyError as exc:
                 raise UnknownEvent(f"Invalid event {event.name}") from exc
 
@@ -337,6 +308,10 @@ class StateEngine:
             except IndexError as exc:
                 logging.error("Unknow event %s on %s", arrow.name, arrow.tail)
                 raise UnknownState from exc
+            except AttributeError as exc:
+                logging.error("Failed to execute path: %s, error=%s", path, exc)
+                self._print_matrix()
+                raise exc
         return path[-1].head
 
     def _find_nearest_immature_state(self, source: str) -> str:
@@ -359,8 +334,9 @@ class StateEngine:
     def _print_matrix(self):
         """dump the matrix for debugging purpose"""
         for source_name, transitions in self._matrix.items():
-            for event_name, target_state in transitions["transitions"].items():
-                if target_state and target_state.is_valid:
+            for event_name, result in transitions["transitions"].items():
+                if result:
+                    target_name = result[0].name
                     logging.debug(
-                        "%s -- %s -> %s", source_name, event_name, target_state.name
+                        "%s -- %s -> %s", source_name, event_name, target_name
                     )

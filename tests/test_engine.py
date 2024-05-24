@@ -30,10 +30,10 @@ def test_transition(transition):
     event = TestEvent(event_name)
 
     # WHEN
-    response = event.fire(test_app, {})
+    output = event.fire(test_app, {})
 
     # THEN
-    assert "success" in response
+    assert output["success"]
     assert test_app.state == TestApp.state_list[expected_target_name]
 
 
@@ -46,10 +46,10 @@ def test_invalide_transition():
         for event in test_app.event_list.values():
             # WHEN
             if not event.name in TestApp.transition_table[source.name]:
-                response = event.fire(test_app, {})
+                output = event.fire(test_app, {})
 
                 # THEN
-                assert "error" in response
+                assert not output["success"]
                 assert test_app.state == source
 
 

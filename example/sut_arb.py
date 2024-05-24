@@ -143,9 +143,9 @@ class MockArbiter(SUT):
             logging.info("Processing request %s, current state: %s", event, source)
             target = MockArbiter.transitions[source][event]
             self._current_state = MockArbiter.states[target]
-            return {"success": 0}
+            return {"success": True}
         except KeyError:
             logging.info(
                 "Invalid request: %s, current state: %s", request, self._current_state
             )
-            return {"error": -1}
+            return {"success": False}

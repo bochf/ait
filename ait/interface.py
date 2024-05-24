@@ -6,9 +6,14 @@ This module defines the interfaces of the finite state machine
     class State
     class Event
     class SUT
+    class Transition
 """
 
+from dataclasses import dataclass
+
 from abc import ABC, abstractmethod
+
+from ait.graph_wrapper import Arrow
 
 
 class State(ABC):
@@ -62,42 +67,6 @@ class State(ABC):
         :return: a dictionary represents the state
         :rtype: Dict
         """
-
-    @property
-    @abstractmethod
-    def is_valid(self) -> bool:
-        """
-        The state is valid or not.
-        If the target state in a transient is invalid means the API returns error on source state.
-
-        :return: the state is valid or not
-        :rtype: bool
-        """
-
-
-class InvalidState(State):
-    """Invalid state class"""
-
-    def __str__(self) -> str:
-        return "invalid state"
-
-    def __eq__(self, __value: object) -> bool:
-        return isinstance(__value, InvalidState)
-
-    def __ne__(self, __value: object) -> bool:
-        return not self.__eq__(__value)
-
-    @property
-    def name(self) -> str:
-        return "invalid"
-
-    @property
-    def value(self) -> dict:
-        return {"value": "invalid"}
-
-    @property
-    def is_valid(self) -> bool:
-        return False
 
 
 class Event(ABC):
@@ -201,3 +170,40 @@ class SUT(ABC):
         :return: result of the request processing
         :rtype: dict
         """
+
+
+@dataclass
+class Transition:
+    """
+    A transition is a tuple of the source state, target state, and the event
+     that triggers the transition. It represents a directed edge in a graph.
+    """
+
+    source: State
+    target: State
+    event: Event
+    output: dict
+
+    def __str__(self) -> str:
+        return str(self.arrow)
+
+    @property
+    def arrow(self) -> Arrow:
+        """
+        Extract name of source, target states and the event to construct an
+        arrow object
+
+        :return: the arrow with source, target and event anme
+        :rtype: Arrow
+        """
+        return Arrow(self.source.name, self.target.name, self.event.name)
+
+    @property
+    def is_valid(self) -> bool:
+        """
+        Check a transition is valid or not based on the response in the output
+
+        :return: True if
+        :rtype: bool
+        """
+        return self.output.get("success", False)

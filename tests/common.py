@@ -51,10 +51,6 @@ class TestState(State):
     def value(self) -> dict:
         return self._value
 
-    @property
-    def is_valid(self) -> bool:
-        return True
-
 
 class TestEvent(Event):
     """The subclass inherited from Event for testing"""
@@ -204,9 +200,9 @@ class TestApp(SUT):
         try:
             target = TestApp.transition_table[self._current_state.name][request["name"]]
             self._current_state = TestApp.state_list[target]
-            return {"success": 0}
+            return {"success": True}
         except KeyError:
             logging.info(
                 "Invalid request: %s, current state: %s", request, self._current_state
             )
-            return {"error": -1}
+            return {"success": False}

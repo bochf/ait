@@ -10,7 +10,7 @@ Welcome to AI-Testing's documentation!
    :maxdepth: 10
    :caption: Contents:
 
-   example
+   ait
 
 
 Indices and tables
