@@ -1,9 +1,10 @@
-igraph
-pycairo
-cairocffi
-pytest
-pylint
 black
+cairocffi
+igraph
+ipykernel
+pip
+pycairo
+pylint
+pytest
 sphinx
 sphinx-rtd-theme
-ipykernel
