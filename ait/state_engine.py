@@ -23,21 +23,8 @@ class StateEngine:
         self._state_graph = GraphWrapper()
 
         self._sut = sut
-        self._env = sut.env.copy()
         self._init_state = sut.state
         self._add_state(self._init_state)
-
-    @property
-    def env(self) -> dict[str, any]:
-        """
-        The key/value pairs of the environment setting to be used to execute
-        APIs on the system.
-
-
-        :return: the environment variables list
-        :rtype: dict
-        """
-        return self._env
 
     @property
     def matrix(self) -> dict[str, dict[str, State | dict[str, State]]]:
@@ -218,7 +205,7 @@ class StateEngine:
                     # the event on current state has been exercised, skip it
                     continue
 
-                output = event.fire(self._sut, self._env)
+                output = event.fire(self._sut)
                 target_state = self._sut.state
                 self._set_transition(
                     Transition(current_state, target_state, event, output)
@@ -304,7 +291,7 @@ class StateEngine:
         for arrow in path:
             try:
                 event = self._sut.event_list[arrow.name]
-                event.fire(self._sut, self._env)
+                event.fire(self._sut)
             except IndexError as exc:
                 logging.error("Unknow event %s on %s", arrow.name, arrow.tail)
                 raise UnknownState from exc

@@ -14,7 +14,7 @@ class ArbiterEvent(Event):
     def name(self) -> str:
         return self._name
 
-    def fire(self, sut: SUT, args: dict) -> dict:
+    def fire(self, sut: SUT) -> dict:
         """
         event fire, send request to the sut
 
@@ -25,7 +25,7 @@ class ArbiterEvent(Event):
         :return: event process result
         :rtype: dict
         """
-        return sut.process_request(self._build_request(args))
+        return sut.process_request(self._build_request(sut.env))
 
 
 class CreateRoom(ArbiterEvent):

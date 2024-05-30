@@ -100,7 +100,7 @@ class Event(ABC):
         """
 
     @abstractmethod
-    def fire(self, sut: object, args: dict) -> dict:
+    def fire(self, sut: object) -> dict:
         """Fire the event on source state with arguments
 
         :param sut: the target system that will receive and process the event

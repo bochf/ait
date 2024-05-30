@@ -73,7 +73,7 @@ class TestEvent(Event):
         """
         return {"name": self.name}
 
-    def fire(self, sut: SUT, args: dict) -> dict:
+    def fire(self, sut: SUT) -> dict:
         """Fire the event on source state with arguments
 
         :param sut: the target system that will receive and process the event
@@ -84,7 +84,7 @@ class TestEvent(Event):
           if the API returns error, the state must be an invalid state
         :rtype: tuple[State, dict]
         """
-        request = self._build_request(args)
+        request = self._build_request(sut.env)
         result = sut.process_request(request)
         return result
 
