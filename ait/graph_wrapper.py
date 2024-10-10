@@ -4,7 +4,7 @@ This module defines a finite state machine
 
 from dataclasses import dataclass
 import logging
-from csv import DictWriter, DictReader
+from csv import DictWriter, DictReader, csv
 
 from igraph import Graph, Edge, plot
 
@@ -296,13 +296,20 @@ class GraphWrapper:
         :param filename: the csv filename
         :type filename: str
         """
-        with open(filename, "r", encoding="utf-8", newline="") as csvfile:
-            reader = DictReader(csvfile)
-            for row in reader:
-                source = row.pop("S_source")
-                for edge, target in row.items():
-                    if target:
-                        self.add_arc(Arrow(source, target, edge[2:]))
+        try:
+            with open(filename, "r", encoding="utf-8", newline="") as csvfile:
+                reader = DictReader(csvfile)
+                for row in reader:
+                    source = row.pop("S_source")
+                    for edge, target in row.items():
+                        if target:
+                            self.add_arc(Arrow(source, target, edge[2:]))
+        except FileNotFoundError:
+            logging.error(f"CSV file not found: {filename}")
+        except csv.Error as e:
+            logging.error(f"CSV reading error in {filename}: {str(e)}")
+        except Exception as e:
+            logging.error(f"Unexpected error reading CSV {filename}: {str(e)}")
 
     def update_node_attr(self, data: dict[str, dict[str, any]]):
         """
