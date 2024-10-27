@@ -61,7 +61,7 @@ The test case generator creates test cases based on the state transitions define
 There are multiple strategies to generate test cases, including but not limited to node coverage, edge coverage, and path coverage. Node coverage ensures that all states in the FSM are tested, edge coverage focuses on testing all transitions, and path coverage aims to test all possible paths. For example, in a simple flowchart, node coverage would test each decision point, edge coverage would test each transition between points, and path coverage would test every possible route through the flowchart. The programmer can customize their own strategy by extending the `Strategy` class.
 The test cases are generated in a format that can be executed by a test runner, such as JUnit or PyUnit. They can also be written in a human readable format , such as Gherkin or Cucumber to be review and operated by non-technical people. Classes derived from `CaseWriter` are responsible for writing test cases in different formats.
 
-```{mermaid}
+```mermaid
 flowchart TD
     D[/"Design Document  fa:fa-file"/]
     A("API list fa:fa-list")
@@ -72,7 +72,7 @@ flowchart TD
     base on the state machine"]:::ait-process
     T[\"Test Cases  fa:fa-check"\]:::test-script
     CA[\Write executable test scripts/]
-    CB[\Write  human readable test scripts/]
+    CB[\Write  human-readable test scripts/]
     classDef ait-process fill: #f96
     classDef test-script, stroke:green
 
@@ -96,7 +96,7 @@ flowchart TD
 As the system evolves, it becomes increasingly complicated to obtain a complete and accurate state machine. *Characterization test* is reverse engineering a system to work out a state machine graph, particularly useful for legacy systems. The `Explorer` process begins from a given state with a set of defined events. It tries all the events on the known states and repeats this process until no new state is discovered. For instance, if the system starts in State A, the test will apply all possible events to see if it transitions to new states like State B or State C, and continues this until all states are explored.
 The *characterization test* assumes the current system is correct, even if the behavior is not fully worked as designd or is hard to understand. It provides a baseline of the system's behavior, which can be used to compare against future changes. The test generates a state machine graph by observing the system's behavior, it may discover many corner cases which are never thought of before.
 
-```{mermaid}
+```mermaid
 flowchart TD
     A("API list fa:fa-list")
     S(("Initial state"))
