@@ -2,13 +2,13 @@
 ## A Finite State Machine based automatic integration test case generation and execution framework
 
 ## Maintaining test suites becomes challenging
-**Increased Code Complexity**: As software evolves, new features, dependencies, and interactions between components are introduced. This complexity makes it harder to ensure that tests cover all scenarios and interactions correctly.
+**Increased Code Complexity**: As software evolves, new features, dependencies, and component interactions are introduced. This complexity makes it harder to ensure that tests correctly cover all scenarios and interactions.
 
 **Test Suite Bloat**: Over time, more test cases are added to accommodate new functionality, which can lead to a large, unwieldy test suite. A bloated test suite is harder to run efficiently, maintain, and update, especially when many tests overlap or become redundant.
 
-**Frequent Code Changes**: In a growing system, code is updated frequently to add features, fix bugs, or refactor existing code. Each change can potentially break existing tests or make them obsolete, requiring frequent updates to the test suite. Many developers choose to "test later" or skip the testing process altogether if deadlines are approchaing.
+**Frequent Code Changes**: In a growing system, code is updated frequently to add features, fix bugs, or refactor existing code. Each change can potentially break existing tests or make them obsolete, requiring frequent updates to the test suite. Many developers choose to "test later" or skip the testing process altogether if deadlines are approaching.
 
-**Test Code Quality**: As the test suite grows, test code itself can accumulate "technical debt" if not carefully maintained. Poorly written or duplicated tests become harder to debug, maintain, or refactor, compounding with the system's growth.
+**Test Code Quality**: As the test suite grows, the test code itself can accumulate "technical debt" if not carefully maintained. Poorly written or duplicated tests become harder to debug, maintain, or refactor, compounding the system's growth.
 
 **Performance and Execution Time**: A large test suite often leads to longer execution times, making it harder to run tests frequently. Developers may avoid running tests if they're slow, which reduces the likelihood of catching issues early and increases the maintenance burden when bugs are detected later.
 
@@ -17,7 +17,7 @@
 ##  AI-Testing addresses these challenges
 *"Every computer program is a state machine." -- Alan Turing*
 
-AI-Testing is a framework that generate and execute integration tests based on a Finite State Machine (FSM) model of the system under test. It helps developers quickly build a comprehensive set of test cases as long as system behavior is defined.
+AI-Testing is a framework that generates and executes integration tests based on a Finite State Machine (FSM) model of the system under test. It helps developers quickly build a comprehensive set of test cases as long as system behavior is defined.
 
 ### Key Features
 - **Automated Test Case Generation**: Automatically generates test cases based on the FSM model, ensuring comprehensive coverage of the system's behavior.
@@ -58,8 +58,8 @@ The SUT may also rely on external data sources to determine the next state. For 
 ## How does it work
 **Test Generator**
 The test case generator creates test cases based on the state transitions defined in the finite state machine graph. The test case follows the GIVEN-WHEN-THEN style, the source state is the GIVEN, the trigger event is the WHEN, and the target state is the THEN. The directed pair of transitions (the target state of the 1st transition is the source state of the 2nd transition) links a path, in which the state changes are continued. So we can combine a series of test cases in a chain like GIVEN-WHEN-THEN-WHEN-THEN..., which saves a lot of repeated work of making the system to a certain state and testing the behavior under that state.
-There are multiple strategies to generate test cases, including but not limited to node coverage, edge coverage, and path coverage. Node coverage ensures that all states in the FSM are tested, edge coverage focuses on testing all transitions, and path coverage aims to test all possible paths. For example, in a simple flowchart, node coverage would test each decision point, edge coverage would test each transition between points, and path coverage would test every possible route through the flowchart. The programmer can customize their own strategy by extending the `Strategy` class.
-The test cases are generated in a format that can be executed by a test runner, such as JUnit or PyUnit. They can also be written in a human readable format , such as Gherkin or Cucumber to be review and operated by non-technical people. Classes derived from `CaseWriter` are responsible for writing test cases in different formats.
+There are multiple strategies to generate test cases, including but not limited to node coverage, edge coverage, and path coverage. Node coverage ensures that all states in the FSM are tested, edge coverage focuses on testing all transitions, and path coverage aims to test all possible paths. For example, in a simple flowchart, node coverage would test each decision point, edge coverage would test each transition between points, and path coverage would test every possible route through the flowchart. The programmer can customize their strategy by extending the `Strategy` class.
+The test cases are generated in a format that can be executed by a test runner, such as JUnit or PyUnit. They can also be written in a human-readable format, such as Gherkin or Cucumber to be reviewed and operated by non-technical people. Classes derived from `CaseWriter` are responsible for writing test cases in different formats.
 
 ```mermaid
 flowchart TD
@@ -94,7 +94,7 @@ flowchart TD
 
 **Characterization Test**
 As the system evolves, it becomes increasingly complicated to obtain a complete and accurate state machine. *Characterization test* is reverse engineering a system to work out a state machine graph, particularly useful for legacy systems. The `Explorer` process begins from a given state with a set of defined events. It tries all the events on the known states and repeats this process until no new state is discovered. For instance, if the system starts in State A, the test will apply all possible events to see if it transitions to new states like State B or State C, and continues this until all states are explored.
-The *characterization test* assumes the current system is correct, even if the behavior is not fully worked as designd or is hard to understand. It provides a baseline of the system's behavior, which can be used to compare against future changes. The test generates a state machine graph by observing the system's behavior, it may discover many corner cases which are never thought of before.
+The *characterization test* assumes the current system is correct, even if the behavior is not fully worked as designed or is hard to understand. It provides a baseline of the system's behavior, which can be used to compare against future changes. The test generates a state machine graph by observing the system's behavior, it may discover many corner cases which are never thought of before.
 
 ```mermaid
 flowchart TD
