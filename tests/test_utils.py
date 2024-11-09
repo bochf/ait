@@ -4,21 +4,14 @@ from ait.graph_wrapper import GraphWrapper
 from ait.strategy.edge_cover import Eulerian, eulerize, is_eulerian
 from ait.graph_wrapper import is_connected
 from ait.graph_wrapper import Arrow
-from tests.common import SAMPLE_DATA
+from ait.fsm_importer import FsmImporter
+from tests.common import SAMPLES
 
 
 def test_connectivity():
     """test connectivity of a state machine"""
     # GIVEN
-    state_graph = GraphWrapper()
-
-    # THEN
-    assert not is_connected(state_graph.graph)
-
-    # WHEN
-    state_graph.load_from_dict(SAMPLE_DATA)
-
-    # THEN the graph is connected
+    state_graph = FsmImporter().from_dicts(SAMPLES["transitions"])
     assert is_connected(state_graph.graph)
 
     # WHEN add a new node
@@ -71,13 +64,12 @@ def test_eulerize():
     """test eularize graph"""
     # GIVEN
     input_data = {
-        "A": {"B": {"name": "ab"}, "C": {"name": "ac"}, "D": {"name": "ad"}},
-        "B": {"C": {"name": "bc"}, "D": {"name": "ad"}},
-        "C": {"D": {"name": "cd"}},
-        "D": {"A": {"name": "da"}},
+        "A": {"ab": "B", "ac": "C", "ad": "D"},
+        "B": {"bc": "C", "bd": "D"},
+        "C": {"cd": "D"},
+        "D": {"da": "A"},
     }
-    state_graph = GraphWrapper()
-    state_graph.load_from_dict(input_data)
+    state_graph = FsmImporter().from_dicts(input_data)
 
     # WHEN
     eulerize(state_graph.graph)

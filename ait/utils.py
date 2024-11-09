@@ -1,5 +1,5 @@
 """
-This module defines directed graph related helper functions  
+This module defines directed graph related helper functions
 """
 
 import logging
@@ -26,13 +26,12 @@ def shortest_path(graph: Graph, source: str, target: str) -> list[Arrow]:
         return []
 
     result = []
-    vs = graph.vs
     for eid in path:
         edge = graph.es[eid]
         result.append(
             Arrow(
-                vs[edge.source].attributes()["name"],
-                vs[edge.target].attributes()["name"],
+                graph.vs[edge.source].attributes()["name"],
+                graph.vs[edge.target].attributes()["name"],
                 edge.attributes()["name"],
             )
         )
@@ -52,7 +51,8 @@ def dump_path(path: list[Arrow]) -> str:
     if not path:
         return ""
 
-    result = path[0].tail
+    result = ""
     for arrow in path:
-        result += "--" + arrow.name + "->" + arrow.head
-    return result
+        result += arrow.tail + "--" + arrow.name + "->" + arrow.head + "\n"
+
+    return str(path)

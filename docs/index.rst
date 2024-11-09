@@ -7,10 +7,12 @@ Welcome to AI-Testing's documentation!
 ======================================
 
 .. toctree::
-   :maxdepth: 10
+   :maxdepth: 5
    :caption: Contents:
 
+   README
    ait
+   example
 
 
 Indices and tables

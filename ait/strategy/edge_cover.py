@@ -1,12 +1,13 @@
 """
 This module implement an Eular walk of a connected directed graph based on the
-Hierholzer'a algorithm. If the graph is not an Eularian graph, repeat some 
+Hierholzer'a algorithm. If the graph is not an Eularian graph, repeat some
 existing edges to make it Eularian, i.e. allow walking through some edges more
 than once.
 """
 
 from enum import Enum
 import logging
+import random
 
 from igraph import Graph, Edge
 
@@ -174,8 +175,36 @@ class EdgeCover(Strategy):
     """
 
     def __init__(self, self_circle=False):
+        super().__init__()
         self._self_circle = self_circle
-        self._path = []
+
+    def travel(self, state_machine: GraphWrapper, start: str) -> list[tuple[str, str]]:
+        """
+        Traverse a graph using Hierholzer's algorithm.
+        If the graph is not a Eulerian graph, add edges to make it eulerian.
+
+        :param start: the start point
+        :type start: str
+        :param self_circle: include self circuit or not, defaults to False
+        :type self_circle: bool, optional
+        :return: list of vertex and edge pairs
+        :rtype: list[tuple[str, str]]
+        """
+
+        graph = state_machine.graph.copy()
+        if not self._self_circle:
+            # delete self circle edge
+            def self_circuit(edge: Edge) -> bool:
+                return edge.source == edge.target
+
+            graph.delete_edges(self_circuit)
+        if is_eulerian(graph) == Eulerian.NONE:
+            eulerize(graph)
+
+        self._paths.clear()
+        self._dfs(graph, start)
+        self._paths.reverse()
+        return self._paths
 
     def _dfs(self, graph: Graph, current: str, incoming_edge: str = ""):
         """
@@ -196,16 +225,17 @@ class EdgeCover(Strategy):
         """
         try:
             vertex = graph.vs.find(current)
-            logging.debug("Visit vertex %s", current)
+            # logging.debug("Visit vertex %s", current)
             while True:
                 out_edges = vertex.out_edges()
                 if not out_edges:
                     # push the vertex and the incoming edge into the stack when
                     # there is no outgoing edge
-                    self._path.append((current, incoming_edge))
+                    self._paths.append((current, incoming_edge))
                     break
 
-                edge = out_edges[0]
+                # edge = out_edges[0]
+                edge = random.choice(out_edges)
                 # move to the adjacent vertex and delete the edge
                 adjacent = graph.vs[edge.target].attributes()["name"]
                 edge_name = edge.attributes()["name"]
@@ -214,39 +244,3 @@ class EdgeCover(Strategy):
         except ValueError as exc:
             logging.error("Error %s", exc)
             raise UnknownState from exc
-
-    def travel(self, graph_wrapper: GraphWrapper, source: str) -> list[tuple[str, str]]:
-        """
-        Traverse a graph using Hierholzer's algorithm.
-        If the graph is not a Eulerian graph, add edges to make it eulerian.
-
-        :param source: the start point
-        :type source: str
-        :param self_circle: include self circuit or not, defaults to False
-        :type self_circle: bool, optional
-        :return: list of vertex and edge pairs
-        :rtype: list[tuple[str, str]]
-        """
-
-        graph = graph_wrapper.graph.copy()
-        if not self._self_circle:
-            # delete self circle edge
-            def self_circuit(edge: Edge) -> bool:
-                return edge.source == edge.target
-
-            graph.delete_edges(self_circuit)
-        if is_eulerian(graph) == Eulerian.NONE:
-            eulerize(graph)
-
-        self._path.clear()
-        self._dfs(graph, source)
-        return self._path
-
-    def dump_path(self) -> str:
-        if not self._path:
-            return ""
-
-        result = self._path[-1][0]
-        for target, edge in self._path[-2::-1]:
-            result += "--" + edge + "->" + target
-        return result

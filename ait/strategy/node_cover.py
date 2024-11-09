@@ -4,12 +4,11 @@ Covers all the nodes (states)
 """
 
 import logging
+from copy import deepcopy
 from typing import Union
-
 from igraph import Graph
-
+from ait.errors import UnknownState
 from ait.graph_wrapper import GraphWrapper, Arrow
-from ait.utils import dump_path
 from ait.strategy.strategy import Strategy
 
 
@@ -47,69 +46,45 @@ def _max_subset(
 
 
 class CandidatePath:
+    """
+    A data struct stores a path of a vertex
+    """
 
-    def __init__(
-        self, vid: int = -1, coverage: int = 0, index: int = 0, length: int = 0
-    ):
-        self._vid = vid
-        self._coverage = coverage
-        self._index = index
-        self._len = length
-
-    def __len__(self):
-        return self._len
+    def __init__(self, coverage: int = -1, path: list[int] = None):
+        self._coverage = coverage  # number of unvisited nodes are covered by the path
+        self._path = path or []  # the sequence of vertice
+        self._length = (
+            len(path) if path else -1
+        )  # length of the path, -1 if path is None
 
     def __gt__(self, other) -> bool:
         if not isinstance(other, CandidatePath):
             return True
 
         if self.valid and other.valid:
-            if self.coverage == other.coverage:
-                return len(self) < len(other)
-            return self.coverage > other.coverage
+            if self._coverage == other._coverage:
+                return self._length < other._length
+            return self._coverage > other._coverage
 
         return self.valid
 
     @property
-    def vid(self) -> int:
-        return self._vid
-
-    @property
-    def coverage(self) -> int:
-        return self._coverage
-
-    @property
-    def index(self) -> int:
-        return self._index
+    def path(self) -> list[int]:
+        """
+        the path
+        """
+        return self._path
 
     @property
     def valid(self) -> bool:
-        return self._index >= 0
+        """
+        Check the candidate path is valid or not.
+        A valid candidate path should have at least 1 vertex.
 
-
-def _elect(universal_set: set[int], subsets: list[list[int]]) -> CandidatePath:
-    total = len(universal_set)
-    if total == 0:
-        logging.warning("No unvisited vertex")
-        return CandidatePath()
-
-    logging.debug("unvisited vertices: %s", universal_set)
-    logging.debug("subsets: %s", subsets)
-    if not subsets:
-        return CandidatePath()
-
-    index = 0
-    coverage = 0
-    length = 0
-    for i in range(len(subsets)):
-        covered = len(universal_set.intersection(set(subsets[i])))
-        if coverage < covered:
-            index = i
-            coverage = covered
-            length = len(subsets[i])
-        if covered == total:
-            break
-    return CandidatePath(subsets[index][0], coverage, index, length)
+        :return: True if the path is valid
+        :rtype: bool
+        """
+        return self._length >= 1
 
 
 class NodeCover(Strategy):
@@ -119,40 +94,101 @@ class NodeCover(Strategy):
     posible using Depth-First-Search algorithm. Startover from the initial
     state again if one simple path finished and there are uncovered states.
     """
-    def __init__(self, graph_wrapper: GraphWrapper):
-        self._graph_wrapper = graph_wrapper
-        self._graph = graph_wrapper.graph.copy()
-        self._paths: list[list[Arrow]] = []
-        self._unvisited_vids = set(range(len(self._graph.vs)))
+
+    def __init__(self):
+        super().__init__()
+        self._graph: Graph = None
+        self._unvisited_vids: set[int] = set()
+        self._current_vid = -1  # the last visited vertex id
         # cacheed simple paths for all the vertices
         # key is the vertex id, value is the list of vertex sequence represent
         # list of vertices on the simple path
         self._simple_paths_cache: dict[int, list[list[int]]] = {}
 
-    def _get_simple_paths(self, vid: int) -> list[list[int]]:
-        if vid not in self._simple_paths_cache:
-            paths = sorted(self._graph.get_all_simple_paths(vid), key=len)
-            if not paths:
-                logging.debug("can't go to anywhere from the vertex %s", vid)
-            self._simple_paths_cache[vid] = paths
+    def travel(self, state_machine: GraphWrapper, start: Union[str, int]):
+        """
+        DFS based directed graph traversal.
 
-        return self._simple_paths_cache[vid]
+        :param state_machine: the state machine to visit
+        :type state_machine: GraphWrapper
+        :param start: the start state
+        :type start: Union[str, int]
+        """
+        self._graph = deepcopy(state_machine.graph)
+        self._unvisited_vids = set(range(len(self._graph.vs)))
+        if isinstance(start, str):
+            vertex = self._graph.vs.find(start)
+            if not vertex:
+                raise UnknownState(f"The state {start} is not in the state machine.")
+            start_vid = vertex.index
+        else:
+            start_vid = start
+
+        # get all simple paths from start vertex
+        start_simple_paths = self._get_simple_paths(start_vid)
+        # get the longest simple path from the start point
+        path = start_simple_paths[-1]
+        self._update_path(path)
+
+        while self._unvisited_vids and path:
+            left = len(self._unvisited_vids)
+
+            logging.info("before choose path, unvisited: %s", self._unvisited_vids)
+            path = self._choose_path(start_vid)
+            logging.info("after choose path, unvisited: %s", self._unvisited_vids)
+
+            if not path or left == len(self._unvisited_vids):
+                logging.warning(
+                    "Unreachable vertices %s from %s", self._unvisited_vids, start
+                )
+                return
+
+    def _get_simple_paths(self, vid: int) -> list[list[int]]:
+        """
+        Get all the simple paths starting from a vertex to all the unvisited vertices.
+        The simple path is a path without circuit.
+
+        :param vid: the index of the start vertex
+        :type vid: int
+        :return: all the simple paths represent in list of sequence of vertice,
+                 sorted in length of path
+        :rtype: list[list[int]]
+        """
+        if vid in self._simple_paths_cache:
+            return self._simple_paths_cache[vid]
+
+        paths = sorted(
+            self._graph.get_all_simple_paths(vid, to=self._unvisited_vids), key=len
+        )
+        logging.info(
+            "get %d simple paths from %d to %s", len(paths), vid, self._unvisited_vids
+        )
+        if not paths:
+            logging.debug("can't go to anywhere from the vertex %s", vid)
+        self._simple_paths_cache[vid] = paths
+        return paths
 
     def _update_path(self, path: list[int]):
+        """
+        Convert the sequence of vertice ids to arrows and store in the paths list
+
+        :param path: a sequence of vertices id
+        :type path: list[int]
+        """
         if len(path) < 2:
             logging.warning("invalid path: %s", path)
             return
 
+        logging.info("add new path: %s", path)
         self._unvisited_vids -= set(path)
-        if not (self._paths and self._paths[-1][-1].head == path[0]):
+        if self._current_vid != path[0]:
             # if there is no existing path, or the last vertex of the current
             # path is different than the new path's first vertex, create a new
             # row
             self._paths.append([])
-        for i in range(len(path) - 1):
-            source = path[i]
-            target = path[i + 1]
-            edges = self._graph.es.select(_between=[[source], [target]])
+        for source, target in zip(path[:-1], path[1:]):
+            # go through each step
+            edges = self._graph.es.select(_from=source, _to=target)
             if not edges:
                 logging.error("No edge from %s to %s", source, target)
                 return
@@ -169,21 +205,30 @@ class NodeCover(Strategy):
                 # one to avoid duplicate path
                 self._graph.delete_edges(edges[0].index)
 
-    def _choose_path(self, start_vid, current_vid) -> list[int]:
-        candidate1 = _elect(self._unvisited_vids, self._get_simple_paths(start_vid))
+        # set the last visited vertex id to the end of the path
+        self._current_vid = path[-1]
+
+    def _choose_path(self, start_vid) -> list[int]:
+        """
+        Find a shortest path to cover unvisited vertices as many as possible.
+        The new path is originated from either start_vid or the last visited
+        vertex if available, whichever covers more unvisited vertices. The path
+        from the last visited vertex has the prioirty if the coverage is the same.
+        """
+        logging.info("choosing path between %d and %d", start_vid, self._current_vid)
+        candidate1 = self._elect(start_vid)
         candidate2 = CandidatePath()
 
-        if start_vid != current_vid:
-            candidate2 = _elect(
-                self._unvisited_vids, self._get_simple_paths(current_vid)
-            )
+        if self._current_vid not in [-1, start_vid]:
+            self._get_simple_paths(self._current_vid)
+            candidate2 = self._elect(self._current_vid)
 
         if not (candidate1.valid or candidate2.valid):
             # neight candicate is valid
             logging.warning(
                 "No new path available from vertex %s or vertex %s",
                 start_vid,
-                current_vid,
+                self._current_vid,
             )
             return []
 
@@ -191,50 +236,59 @@ class NodeCover(Strategy):
         if candidate1 > candidate2:
             winner = candidate1
 
-        path = self._get_simple_paths(winner.vid).pop()
-        self._update_path(path)
+        self._update_path(winner.path)
+        return winner.path
 
-    def travel(self, start: Union[str, int]):
+    @property
+    def unvisited_nodes(self) -> set[int]:
         """
-        DFS based directed graph traversal.
+        Unvisited nodes
 
-        :param graph_wrapper: the graph wrapper
-        :type graph_wrapper: GraphWrapper
-        :param start: the start state
-        :type start: Union[str, int]
+        :return: Unvisited nodes
+        :rtype: set[int]
         """
-        start_vid = self._graph.vs[start].index
+        return self._unvisited_vids
 
-        # get all simple paths from start vertex
-        start_simple_paths = self._get_simple_paths(start_vid)
-        # get the longest simple path from the start point
-        path = start_simple_paths.pop(-1)
-        self._unvisited_vids -= set(path)
-        self._update_path(path)
+    def _elect(self, vid: int) -> CandidatePath:
+        """
+        Choose the shortest path that covers most unvisited vertices from the given path list
 
-        while self._unvisited_vids and path:
-            left = len(self._unvisited_vids)
+        :param universal_set: unvisited vertices
+        :type universal_set: set[int]
+        :param subsets: list of vertices sequences, each vertices sequence represents a path
+        :type subsets: list[list[int]]
+        :return: the shorest path that covers most unvisited vertices
+        :rtype: CandidatePath
+        """
+        total = len(self._unvisited_vids)
+        if total == 0:
+            logging.warning("No unvisited vertex")
+            return CandidatePath()
 
-            end_vid = path[-1]  # the last vertex id of the simple path
+        if not self._simple_paths_cache[vid]:
+            return CandidatePath()
 
-            path = self._choose_path(start_vid, end_vid)
+        # filter out the paths do have any unvisited vertex
+        filtered_paths: list[list[int]] = []
+        for path in self._simple_paths_cache[vid]:
+            if self._unvisited_vids.intersection(set(path)):
+                filtered_paths.append(path)
+        self._simple_paths_cache[vid] = filtered_paths
 
-            if not path or left == len(self._unvisited_vids):
-                logging.warning(
-                    "can't reach all the vertices from %s, unvisited: %s",
-                    start,
+        # find the shortest path covers most unvisited vertices
+        coverage = -1
+        temp_path = []
+        for path in filtered_paths:
+            covered = len(self._unvisited_vids.intersection(set(path)))
+            if coverage < covered:
+                coverage = covered
+                temp_path = path
+                logging.info(
+                    "%d unvisited nodes %s are covered by new path %s",
+                    coverage,
                     self._unvisited_vids,
+                    temp_path,
                 )
-                return
-
-    def dump_path(self) -> str:
-        if not self._paths:
-            return ""
-
-        result = ""
-        for path in self._paths:
-            if not path:
-                continue
-
-            result += dump_path(path) + "\n"
-        return result
+            if covered == total:
+                break
+        return CandidatePath(coverage, temp_path)

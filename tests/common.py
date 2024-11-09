@@ -13,30 +13,39 @@ from ait.interface import Event, State
 from ait.interface import SUT
 
 
-SAMPLE_DATA = {
-    "A": {"B": {"name": "1"}, "C": {"name": "2"}},
-    "B": {"D": {"name": "3"}},
-    "C": {"D": {"name": "4"}},
-    "D": {"E": {"name": "5"}, "F": {"name": "6"}},
-    "E": {"G": {"name": "7"}},
-    "F": {"G": {"name": "8"}},
+SAMPLES = {
+    "states": {key: key.lower() for key in "ABCDEFG"},
+    "events": {str(key): str(key + 100) for key in range(8)},
+    "transitions": {
+        "A": {"0": "B", "1": "C"},
+        "B": {"2": "D"},
+        "C": {"3": "D"},
+        "D": {"4": "E", "5": "F"},
+        "E": {"6": "G"},
+        "F": {"7": "G"},
+    },
+    "output": {
+        "A": {"0": '{"rc": 0}', "1": '{"rc", 1}'},
+        "B": {"2": '{"rc": 2}'},
+        "C": {"3": '{"rc": 3}'},
+        "D": {"4": '{"rc": 4}', "5": '{"rc": -1}'},
+        "E": {"6": '{"rc": -2, "ext_event": {"name": "ext", "value": "event"}}'},
+        "F": {"7": ""},
+    },
 }
 
 
-class TestState(State):
+class StateTest(State):
     """The subclass inherited from State for testing"""
-
-    # pylint: disable=super-init-not-called
-    def __init__(self, name: str, value: dict):
-        self._name = name
-        self._label = name
-        self._value = value
 
     def __str__(self) -> str:
         return f"name={self.name}, value={self.value}"
 
+    def __repr__(self) -> str:
+        return f"name={self.name}, value={self.value}"
+
     def __eq__(self, rhs: object) -> bool:
-        if not isinstance(rhs, TestState):
+        if not isinstance(rhs, StateTest):
             return False
         return self.value == rhs.value
 
@@ -44,27 +53,21 @@ class TestState(State):
         return not self.__eq__(__value)
 
     @property
-    def name(self) -> str:
-        return self._name
-
-    @property
-    def value(self) -> dict:
-        return self._value
-
-    @property
     def is_valid(self) -> bool:
         return True
 
 
-class TestEvent(Event):
+class EventTest(Event):
     """The subclass inherited from Event for testing"""
 
     def __init__(self, event_name: str):
-        self._name = event_name
+        super().__init__(event_name, {"name": event_name})
 
-    @property
-    def name(self) -> str:
-        return self._name
+    def __str__(self) -> str:
+        return f"name={self.name}, value={self.value}"
+
+    def __repr__(self) -> str:
+        return f"name={self.name}, value={self.value}"
 
     def _build_request(self, args: dict) -> dict:
         """
@@ -89,11 +92,12 @@ class TestEvent(Event):
         :rtype: tuple[State, dict]
         """
         request = self._build_request(sut.env)
+        self.value = {"request": request}
         result = sut.process_request(request)
         return result
 
 
-class TestApp(SUT):
+class AppTest(SUT):
     """
     The similuated application to be tested onsisting with 5 events,
     4 states and their transistions described below:
@@ -101,9 +105,9 @@ class TestApp(SUT):
     .. code-block:: python
 
         state_transitions = {
-            "Start": {
+            "Idle": {
                 "Initialize": "Running",
-                "Reset": "Start"
+                "Reset": "Idle"
             },
             "Running": {
                 "Pause": "Paused",
@@ -114,7 +118,7 @@ class TestApp(SUT):
                 "Stop": "Stopped"
             },
             "Stopped": {
-                "Reset": "Start"
+                "Reset": "Idle"
             }
         }
 
@@ -123,7 +127,7 @@ class TestApp(SUT):
            ┌──Reset ─┐
            │         │
            │     ┌───▼───┐
-           └─────┤ Start ◄─────────────┐
+           └─────┤ Idle  ◄─────────────┐
                  └───┬───┘             │
                      │                 │
                    Init              Reset
@@ -141,15 +145,15 @@ class TestApp(SUT):
     """
 
     state_list = {
-        name: TestState(name, {"state": name})
-        for name in ["Start", "Running", "Paused", "Stopped"]
+        name: StateTest(name, {"state": name})
+        for name in ["Idle", "Running", "Paused", "Stopped"]
     }
 
     transition_table = {
-        "Start": {"Initialize": "Running", "Reset": "Start"},
+        "Idle": {"Initialize": "Running", "Reset": "Idle"},
         "Running": {"Pause": "Paused", "Stop": "Stopped"},
         "Paused": {"Resume": "Running", "Stop": "Stopped"},
-        "Stopped": {"Reset": "Start"},
+        "Stopped": {"Reset": "Idle"},
     }
 
     def __init__(self):
@@ -157,11 +161,7 @@ class TestApp(SUT):
         Initialize the SUT
         """
         super().__init__({})
-        self._event_list = {
-            name: TestEvent(name)
-            for name in ["Initialize", "Reset", "Pause", "Stop", "Resume"]
-        }
-        self._current_state = TestApp.state_list["Start"]
+        self._current_state = AppTest.state_list["Idle"]
 
     def start(self) -> State:
         """
@@ -170,12 +170,12 @@ class TestApp(SUT):
         :return: the initial state
         :rtype: State
         """
-        self._current_state = TestApp.state_list["Start"]
+        self._current_state = AppTest.state_list["Idle"]
         return self._current_state
 
     def reset(self):
         """reset the system to the initial state"""
-        self._current_state = TestApp.state_list["Start"]
+        self._current_state = AppTest.state_list["Idle"]
 
     @property
     def state(self) -> State:
@@ -187,11 +187,6 @@ class TestApp(SUT):
         """force set the system state to a new value, for test purpose"""
         self._current_state = value
 
-    @property
-    def event_list(self) -> dict[str, Event]:
-        """The event list of the system"""
-        return self._event_list
-
     def process_request(self, request: dict, **kwargs) -> dict:
         """
         Process an request
@@ -202,8 +197,8 @@ class TestApp(SUT):
         :rtype: dict
         """
         try:
-            target = TestApp.transition_table[self._current_state.name][request["name"]]
-            self._current_state = TestApp.state_list[target]
+            target = AppTest.transition_table[self._current_state.name][request["name"]]
+            self._current_state = AppTest.state_list[target]
             return {"success": 0}
         except KeyError:
             logging.info(

@@ -2,11 +2,10 @@
 This moudle test FiniteStateMachine
 """
 
-import logging
-
-from ait.graph_wrapper import GraphWrapper
-from ait.graph_wrapper import Arrow
-from tests.common import SAMPLE_DATA
+from ait.graph_wrapper import GraphWrapper, Arrow
+from ait.fsm_importer import FsmImporter
+from ait.fsm_exporter import FsmExporter
+from tests.common import SAMPLES
 
 
 def verify_graph(state_graph: GraphWrapper, nodes: list[str], arrows: list[Arrow]):
@@ -15,7 +14,7 @@ def verify_graph(state_graph: GraphWrapper, nodes: list[str], arrows: list[Arrow
     assert len(state_graph.arcs) == len(arrows)
 
     for name in nodes:
-        assert state_graph.has_node(name)
+        assert state_graph.get_node(name)
 
     for arc in arrows:
         assert state_graph.get_arcs(arc)
@@ -71,30 +70,39 @@ def test_add_arcs():
 def test_load_from_dict():
     """test load graph from dictionary"""
     # GIVEN
-    input_dict = SAMPLE_DATA.copy()
+    state_graph = FsmImporter().from_dicts(
+        SAMPLES["transitions"], SAMPLES["states"], SAMPLES["events"], SAMPLES["output"]
+    )
 
     # WHEN
-    state_graph = GraphWrapper()
-    state_graph.load_from_dict(input_dict)
-
-    output = state_graph.export_to_dict()
+    transitions, states, events, output = FsmExporter(state_graph).to_dict()
 
     # THEN
-    assert input_dict == output
-    logging.info("%s", output)
+    assert SAMPLES["transitions"] == transitions
+    assert SAMPLES["states"] == states
+    assert SAMPLES["events"] == events
+    assert SAMPLES["output"] == output
 
 
 def test_export_to_csv():
     """test export data from graph wrpper to a csv file"""
     # GIVEN
-    state_graph = GraphWrapper()
-    state_graph.load_from_dict(SAMPLE_DATA)
+    state_graph = FsmImporter().from_dicts(
+        SAMPLES["transitions"], SAMPLES["states"], SAMPLES["events"], SAMPLES["output"]
+    )
+    FsmExporter(state_graph).to_csv("logs/test_export_state_graph.csv", detail=True)
 
     # WHEN
-    state_graph.write_to_csv("logs/test_export_state_graph.csv")
+    sg2 = FsmImporter().from_csv(
+        "logs/test_export_state_graph.csv",
+        "logs/test_export_state_graph_states.csv",
+        "logs/test_export_state_graph_events.csv",
+        "logs/test_export_state_graph_output.csv",
+    )
+    transitions, states, events, output = FsmExporter(sg2).to_dict()
 
     # THEN
-    sg2 = GraphWrapper()
-    sg2.read_from_csv("logs/test_export_state_graph.csv")
-    output_data = sg2.export_to_dict()
-    assert output_data == SAMPLE_DATA
+    assert SAMPLES["transitions"] == transitions
+    assert SAMPLES["states"] == states
+    assert SAMPLES["events"] == events
+    assert SAMPLES["output"] == output

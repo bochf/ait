@@ -2,11 +2,12 @@
 This module defines a finite state machine
 """
 
-from dataclasses import dataclass
 import logging
-from csv import DictWriter, DictReader, csv
+from dataclasses import dataclass
 
-from igraph import Graph, Edge, plot
+from igraph import Graph, Vertex, Edge
+
+from ait.interface import Transition
 
 
 @dataclass
@@ -23,6 +24,9 @@ class Arrow:
 
     def __str__(self) -> str:
         return f"{self.tail}--{self.name}->{self.head}"
+
+    def __repr__(self) -> str:
+        return self.__str__()
 
     def __eq__(self, other) -> bool:
         if not isinstance(other, Arrow):
@@ -68,14 +72,12 @@ class GraphWrapper:
     def __init__(self):
         """constructor"""
         self._graph: Graph = Graph(directed=True)
-
-    def _edge_to_arrow(self, edge: Edge) -> Arrow:
-        vs = self._graph.vs
-        return Arrow(
-            vs[edge.source].attributes()["name"],
-            vs[edge.target].attributes()["name"],
-            edge.attributes()["name"],
-        )
+        # the states name/value pairs of the graph, read from csv file
+        self._state_list: dict[str, str] = {}
+        # the  events name/value pairs of the graph, read from csv file
+        self._event_list: dict[str, str] = {}
+        # the transition matrix of source state/event/target state, read from csv file
+        self._transition_matrix: dict[str, dict[str, str]] = {}
 
     @property
     def graph(self) -> Graph:
@@ -86,6 +88,16 @@ class GraphWrapper:
         :rtype: Graph
         """
         return self._graph
+
+    @graph.setter
+    def graph(self, value: Graph):
+        """
+        Set the internal graph object
+
+        :param value: the new value
+        :type value: Graph
+        """
+        self._graph = value
 
     @property
     def nodes(self) -> list[str]:
@@ -105,24 +117,24 @@ class GraphWrapper:
         :return: list of arrows
         :rtype: list[Arrow]
         """
-        return [self._edge_to_arrow(edge) for edge in self._graph.es]
+        return [edge_to_arrow(edge, self._graph) for edge in self._graph.es]
 
-    def has_node(self, name: str) -> bool:
+    def get_node(self, name: str) -> Vertex:
         """
         Get a state by name
 
         :param name: the name of the state
         :type name: str
-        :return: true if exists, otherwise false
-        :rtype: bool
+        :return: the vertex if found, else None
+        :rtype: Vertex
         """
         try:
-            self._graph.vs.find(name)
-            return True
+            vertex = self._graph.vs.find(name)
+            return vertex
         except ValueError:
-            return False
+            return None
 
-    def add_node(self, name: str):
+    def add_node(self, name: str, detail: dict = None):
         """
         Add a state in the graph as a vertex, if a vertex with the same state
         name already exist, do nothing.
@@ -130,12 +142,22 @@ class GraphWrapper:
         :param name: the name of the node
         :type state: str
         """
-        if self.has_node(name):
-            logging.warning("Skip duplicated vertex %s", name)
-            return
+        node = self.get_node(name)
+        if node:
+            value = node.attributes()["detail"]
+            if value and value != detail:
+                logging.error(
+                    "A node with the same name but different value exists."
+                    " name=%s, value=%s, new_value=%s",
+                    name,
+                    value,
+                    detail,
+                )
+            else:
+                return
 
-        self._graph.add_vertex(name)
-        logging.info("Add new vertex %s", name)
+        self._graph.add_vertex(name, detail=detail)
+        logging.info("Add new vertex %s: %s", name, detail)
 
     def get_arcs(self, arrow: Arrow) -> list[Arrow]:
         """
@@ -177,12 +199,12 @@ class GraphWrapper:
         edges = [self._graph.es[eid] for eid in eids]
         # filter by event name
         return [
-            self._edge_to_arrow(edge)
+            edge_to_arrow(edge, self._graph)
             for edge in edges
             if not arrow.name or edge.attributes()["name"] == arrow.name
         ]
 
-    def add_arc(self, arrow: Arrow, unique: bool = True):
+    def add_arc(self, arrow: Arrow, unique: bool = True, **kwargs):
         """
         Add a transition from source state to target state when event happens.
         The source and target state are stored in the graph as vertices and the
@@ -194,16 +216,28 @@ class GraphWrapper:
         :param unique: keep the transition unique, defaults to True. if there
             is a transition with the same source/target/event, do nothing.
         :type unique: bool, optional
+        :param kwargs: optional details of an arrow
+                       source_detail: the detail of the source state
+                       target_detail: the detail of the target state
+                       event_detail: the detail of the event
+                       transition_result: the result of the transition
+        :type kwargs: Any
         """
         if unique:
             # check the uniqueness of the transition
             if self.get_arcs(arrow):
                 return
 
-        self.add_node(arrow.tail)
-        self.add_node(arrow.head)
+        self.add_node(arrow.tail, kwargs.pop("source_detail", ""))
+        self.add_node(arrow.head, kwargs.pop("target_detail", ""))
 
-        self._graph.add_edge(arrow.tail, arrow.head, name=arrow.name)
+        self._graph.add_edge(
+            arrow.tail,
+            arrow.head,
+            name=arrow.name,
+            detail=kwargs.pop("event_detail", ""),
+            output=kwargs.pop("transition_result", {}),
+        )
         logging.info("Add new edge %s", arrow)
 
     def bfs(self, name: str) -> list[str]:
@@ -215,101 +249,12 @@ class GraphWrapper:
         :return: list of vertices' name in order
         :rtype: list[str]
         """
-        if not self.has_node(name):
+        if not self.get_node(name):
             logging.error("Invalid state %s", name)
             return []
 
         vids = self._graph.bfs(name)[0]  # vertex ids visited in BFS order
         return [self._graph.vs[vid].attributes()["name"] for vid in vids]
-
-    def load_from_dict(self, data: dict[str, dict[str, dict]]):
-        """
-        Constructs a graph from a dict-of-dicts representation.
-
-        Each key is a string and represent a vertex. Each value is a dict
-        representing outgoing edges from that vertex. Each dict key is a
-        string for a target vertex, such that an edge will be created between
-        those two vertices. Strings are interpreted as vertex names. Each
-        value is a dictionary of edge attributes for that edge.
-
-        :param data: map of vertex name and the edges
-        :type data: dict[str, dict[str, dict]]
-
-        .. code-block::
-
-            {
-                'Alice':
-                {
-                    'Bob': {'weight': 1.5},
-                    'David': {'weight': 2}
-                }
-            }
-
-        """
-        self._graph = Graph.DictDict(data, directed=True)
-
-    def export_to_dict(self) -> dict[str, dict[str, dict]]:
-        """
-        Export the graph to a dict-of-dict data structure
-
-        :return: _description_
-        :rtype: dict[str, dict[str, dict]]
-        """
-        data = self._graph.to_dict_dict(use_vids=False, edge_attrs="name")
-        return data
-
-    def write_to_csv(self, filename):
-        """
-        Save the matrix to a csv file
-
-        :param filename: the csv filename
-        :type filename: str
-        """
-        with open(filename, "w", encoding="utf-8", newline="") as csvfile:
-            edge_names = set(
-                "E_" + str(edge.attributes()["name"]) for edge in self._graph.es
-            )
-            fields = ["S_source"] + list(edge_names)
-            writer = DictWriter(csvfile, fieldnames=fields)
-
-            writer.writeheader()
-            for vertex in self._graph.vs:
-                row = {"S_source": vertex.attributes()["name"]}
-                for edge in vertex.out_edges():  # add defined transitions
-                    key = "E_" + str(edge.attributes()["name"])
-                    value = self._graph.vs[edge.target].attributes()["name"]
-                    row[key] = value
-                for key in edge_names:  # add invalid transitions
-                    if key not in row:
-                        row[key] = ""
-                writer.writerow(row)
-
-    def read_from_csv(self, filename):
-        """
-        Load the data from a csv file.
-        The first line of the csv file is a string list stars with "S_source"
-        followed by event names with prefix "E_".
-        The first column of the csv file is the state names.
-        The rest of the data is the target state name when an event happens
-        at source state.
-
-        :param filename: the csv filename
-        :type filename: str
-        """
-        try:
-            with open(filename, "r", encoding="utf-8", newline="") as csvfile:
-                reader = DictReader(csvfile)
-                for row in reader:
-                    source = row.pop("S_source")
-                    for edge, target in row.items():
-                        if target:
-                            self.add_arc(Arrow(source, target, edge[2:]))
-        except FileNotFoundError:
-            logging.error(f"CSV file not found: {filename}")
-        except csv.Error as e:
-            logging.error(f"CSV reading error in {filename}: {str(e)}")
-        except Exception as e:
-            logging.error(f"Unexpected error reading CSV {filename}: {str(e)}")
 
     def update_node_attr(self, data: dict[str, dict[str, any]]):
         """
@@ -318,13 +263,13 @@ class GraphWrapper:
         :param data: the map of node name and attributes
         :type data: dict[str, dict[str, any]]
         """
-        vs = self._graph.vs
-        for vertex in vs:
+        vertices = self._graph.vs
+        for vertex in vertices:
             vertex_name = vertex.attributes()["name"]
             try:
                 attrs = data[vertex_name]
                 for key, value in attrs.items():
-                    vs[vertex.index][key] = value
+                    vertices[vertex.index][key] = value
             except KeyError:
                 continue
 
@@ -335,32 +280,15 @@ class GraphWrapper:
         :param data: the map of edge name and attributes
         :type data: dict[str, dict[str, any]]
         """
-        es = self._graph.es
-        for edge in es:
+        edges = self._graph.es
+        for edge in edges:
             edge_name = edge.attributes()["name"]
             try:
                 attrs = data[edge_name]
                 for key, value in attrs.items():
-                    es[edge.index][key] = value
+                    edges[edge.index][key] = value
             except KeyError:
                 continue
-
-    def export_graph(self, filename: str, show_self_circle: bool = True, **kwargs):
-        """
-        Generate a plotting of the graph data and save in a file
-
-
-        :param filename: the output file name, support svg, pdf
-        :type filename: str
-        :param show_self_circle: show self circle in the graph or not, defaults to True
-        :type show_self_circle: bool, optional
-        """
-        if show_self_circle:
-            plot(self._graph, target=filename, **kwargs)
-        else:
-            g = self._graph.copy()
-            g.delete_edges([edge.index for edge in g.es if edge.source == edge.target])
-            plot(g, target=filename, **kwargs)
 
 
 def is_connected(graph: Graph) -> bool:
@@ -372,3 +300,22 @@ def is_connected(graph: Graph) -> bool:
     :rtype: bool
     """
     return graph.is_connected(mode="weak")
+
+
+def edge_to_arrow(edge: Edge, graph: Graph) -> Arrow:
+    """
+    Convert an edge to an arrow
+
+    :param edge: the edge in a graph
+    :type edge: Edge
+    :param graph: the graph
+    :type graph: Graph
+    :return: the arrow with source, target and event name
+    :rtype: Arrow
+    """
+    vertices = graph.vs
+    return Arrow(
+        vertices[edge.source].attributes()["name"],
+        vertices[edge.target].attributes()["name"],
+        edge.attributes()["name"],
+    )

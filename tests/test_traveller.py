@@ -6,8 +6,10 @@ from ait.graph_wrapper import Arrow
 
 from ait.strategy.edge_cover import EdgeCover
 from ait.strategy.node_cover import NodeCover
+from ait.fsm_exporter import FsmExporter
 from ait.graph_wrapper import GraphWrapper
 from ait.strategy.edge_cover import eulerize
+from ait.fsm_importer import FsmImporter
 
 
 def _dump_graph(graph: GraphWrapper, filename: str):
@@ -19,7 +21,7 @@ def _dump_graph(graph: GraphWrapper, filename: str):
     :param filename: the filename to be used in csv and svg files
     :type filename: str
     """
-    graph.write_to_csv(f"logs/{filename}.csv")
+    FsmExporter(graph).to_csv(f"logs/{filename}.csv")
 
     # add label to vertices and edges
     v_labels = {}
@@ -33,33 +35,36 @@ def _dump_graph(graph: GraphWrapper, filename: str):
         name = edge.attributes()["name"]
         e_labels[name] = {"label": name}
     graph.update_edge_attr(e_labels)
-    graph.export_graph(f"logs/{filename}.svg", (0, 0, 500, 500))
+    try:
+        FsmExporter(graph).to_svg(f"logs/{filename}.svg", (0, 0, 500, 500))
+    except AttributeError as exc:
+        logging.warning("Export graph to svg is not supported because: %s", exc)
 
 
 def test_edge_coverage():
     """Test  EdgeCover strategy"""
     # GIVEN
     input_data = {
-        "A": {"B": {"name": "1"}, "E": {"name": "2"}},
-        "B": {"C": {"name": "3"}},
-        "C": {"A": {"name": "4"}, "D": {"name": "5"}},
-        "D": {"A": {"name": "6"}, "C": {"name": "7"}},
-        "E": {"B": {"name": "8"}, "C": {"name": "9"}},
+        "A": {"0": "B", "1": "E"},
+        "B": {"2": "C"},
+        "C": {"3": "A", "4": "D"},
+        "D": {"5": "A", "6": "C"},
+        "E": {"7": "B", "8": "C"},
     }
 
-    state_graph = GraphWrapper()
-    state_graph.load_from_dict(input_data)
-    _dump_graph(state_graph, "test_traveller")
+    importer = FsmImporter()
+    state_machine = importer.from_dicts(input_data)
+    _dump_graph(state_machine, "test_traveller")
 
     stg = EdgeCover()
 
     # WHEN
-    track = stg.travel(state_graph, "A")
-    logging.info(stg.dump_path())
+    track = stg.travel(state_machine, "A")
+    logging.info(stg.tracks)
 
     # THEN
-    eulerize(state_graph.graph)  # make the graph Eulerian to compare the result
-    expect_result = state_graph.arcs.copy()
+    eulerize(state_machine.graph)  # make the graph Eulerian to compare the result
+    expect_result = state_machine.arcs.copy()
 
     actual_result = []
     source = track[-1][0]
@@ -74,7 +79,7 @@ def test_edge_coverage():
         assert elem[0] == elem[1]
 
 
-def get_least_in_degree_vertex(g: Graph) -> int:
+def get_least_in_degree_vertex(graph: Graph) -> int:
     """
     Get the vertex with the least in-degree
 
@@ -83,10 +88,10 @@ def get_least_in_degree_vertex(g: Graph) -> int:
     :return: vertex index
     :rtype: int
     """
-    degree = g.vs[0].degree(mode="in")
+    degree = graph.vs[0].degree(mode="in")
     lowest = 0
-    for i in range(1, len(g.vs)):
-        tmp = g.vs[i].degree(mode="in")
+    for i in range(1, len(graph.vs)):
+        tmp = graph.vs[i].degree(mode="in")
         if tmp == 0:
             return i
         if tmp < degree:
@@ -98,24 +103,79 @@ def get_least_in_degree_vertex(g: Graph) -> int:
 def test_node_coverage():
     """Test  NodeCover strategy"""
     # GIVEN
-    state_graph = GraphWrapper()
+    state_machine = GraphWrapper()
     while True:
-        state_graph._graph = Graph.Erdos_Renyi(10, m=16, directed=True)
-        if state_graph._graph.is_connected(mode="weak"):
+        state_machine.graph = Graph.Erdos_Renyi(10, m=16, directed=True)
+        if state_machine.graph.is_connected(mode="weak"):
             break
-    state_graph._graph.vs["name"] = [
-        "S_" + str(i) for i in range(len(state_graph._graph.vs))
+    state_machine.graph.vs["name"] = [
+        "S_" + str(i) for i in range(len(state_machine.graph.vs))
     ]
-    state_graph._graph.vs["label"] = [
-        "S_" + str(i) for i in range(len(state_graph._graph.vs))
+    state_machine.graph.vs["label"] = [
+        "S_" + str(i) for i in range(len(state_machine.graph.vs))
     ]
-    state_graph._graph.es["name"] = [
-        "E_" + str(i) for i in range(len(state_graph._graph.es))
+    state_machine.graph.es["name"] = [
+        "E_" + str(i) for i in range(len(state_machine.graph.es))
     ]
-    _dump_graph(state_graph, "test_traveller")
+    _dump_graph(state_machine, "test_traveller")
 
-    stg = NodeCover(state_graph)
+    stg = NodeCover()
 
     # WHEN
-    stg.travel(get_least_in_degree_vertex(state_graph.graph))
-    logging.info("all paths: \n%s", stg.dump_path())
+    stg.travel(state_machine, get_least_in_degree_vertex(state_machine.graph))
+    logging.info("all paths: \n%s", stg.tracks)
+
+
+def test_node_coverage_multi_root():
+    """
+    Test node coverage with multipl root vertices
+    """
+    # GIVEN
+    creator = FsmImporter()
+    state_machine = creator.from_csv("tests/data/multi_root.csv")
+    _dump_graph(state_machine, "multi_root")
+
+    # get all the root vertices
+    roots = set(
+        vertex.index
+        for vertex in state_machine.graph.vs
+        if vertex.degree(mode="in") == 0
+    )
+    traveller = NodeCover()
+
+    # WHEN
+    traveller.travel(state_machine, roots.pop())
+    logging.info("all paths: \n%s", traveller.tracks)
+
+    # THEN
+    # The remaining roots should be unvisited
+    assert not roots - traveller.unvisited_nodes
+    assert not traveller.unvisited_nodes - roots
+
+
+def test_node_coverage_real_data():
+    """
+    Test the node coverage with the matrix generated from arbiter
+    """
+    # GIVEN
+    state_machine = FsmImporter().from_csv("tests/data/arbiter.csv")
+    _dump_graph(state_machine, "arbiter")
+    traveller = NodeCover()
+
+    # WHEN
+    traveller.travel(state_machine, 0)
+    logging.info("all paths: \n%s", traveller.tracks)
+
+
+def test_edge_coverage_real_data():
+    """
+    Test the edge coverage with the matrix generated from arbiter
+    """
+    # GIVEN
+    state_machine = FsmImporter().from_csv("tests/data/arbiter.csv")
+    _dump_graph(state_machine, "arbiter")
+    traveller = EdgeCover()
+
+    # WHEN
+    traveller.travel(state_machine, 0)
+    logging.info("all paths: \n%s", traveller.tracks)

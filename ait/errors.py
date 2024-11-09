@@ -7,3 +7,9 @@ class UnknownState(Exception):
 
 class UnknownEvent(Exception):
     """Raised when the event name does not exist"""
+
+
+class InvalidTransition(Exception):
+    """
+    Raised when the transition is not valid
+    """
